@@ -72,6 +72,12 @@ export default function TelaDeLogin() {
               <Text style={estilosGlobais.textoBotaoPrimario}>Entrar</Text>
             </TouchableOpacity>
 
+            <TouchableOpacity style={{ flexDirection: 'row', marginTop: 10 }}>
+            <Text>Não possui uma conta? </Text>
+            <Text style={estilosGlobais.textoLink}>Cadastre-se!</Text>
+            </TouchableOpacity>
+            
+
             <TouchableOpacity style={estilosLogin.botaoEsqueciSenha}>
               <Text style={estilosGlobais.textoLink}>Esqueceu a senha?</Text>
             </TouchableOpacity>
