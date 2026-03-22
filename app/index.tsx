@@ -9,20 +9,22 @@ import {
   Platform,
   Alert,
 } from 'react-native';
-import { FontAwesome5 } from '@expo/vector-icons'; 
+import { FontAwesome5 } from '@expo/vector-icons';
+import { useRouter } from 'expo-router'; 
 
-// Importa os estilos locais e globais
-import { estilosLogin } from './estilosLogin';
-import { estilosGlobais } from '../../../componentes/estilosGlobais';
+// Importa os estilos (verifique se os caminhos continuam batendo com sua pasta src)
+import { estilosLogin } from './estilosLogin'; 
+import { estilosGlobais } from '../src/componentes/estilosGlobais'; 
 
-// O "export default" é essencial aqui para o erro sumir!
 export default function TelaDeLogin() {
   const [email, definirEmail] = useState<string>('');
   const [senha, definirSenha] = useState<string>('');
+  const router = useRouter(); 
 
   const realizarLogin = () => {
     if (email !== '' && senha !== '') {
-      Alert.alert('Sucesso!', 'Redirecionando para o painel do GESTORFIN...');
+      // replace: o usuário entra e não consegue "voltar" para o login pelo botão do celular
+      router.replace('/(tabs)/home'); 
     } else {
       Alert.alert('Atenção', 'Por favor, preencha seu e-mail e senha.');
     }
@@ -34,8 +36,10 @@ export default function TelaDeLogin() {
       style={estilosLogin.imagemFundo}
     >
       <View style={estilosLogin.peliculaEscura}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={estilosLogin.areaPrincipal}>
-          
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+          style={estilosLogin.areaPrincipal}
+        >
           <View style={estilosLogin.cartaoLogin}>
             
             <View style={estilosLogin.iconeTopo}>
@@ -45,6 +49,7 @@ export default function TelaDeLogin() {
             <Text style={estilosGlobais.tituloPrincipal}>GESTORFIN</Text>
             <Text style={estilosGlobais.subtitulo}>Controle seu futuro financeiro.</Text>
 
+            {/* Campo de E-mail */}
             <View style={estilosGlobais.grupoEntrada}>
               <FontAwesome5 name="envelope" size={16} color="#9ca3af" style={estilosGlobais.iconeEspacamento} />
               <TextInput
@@ -57,6 +62,7 @@ export default function TelaDeLogin() {
               />
             </View>
 
+            {/* Campo de Senha */}
             <View style={estilosGlobais.grupoEntrada}>
               <FontAwesome5 name="lock" size={16} color="#9ca3af" style={estilosGlobais.iconeEspacamento} />
               <TextInput
@@ -68,25 +74,28 @@ export default function TelaDeLogin() {
               />
             </View>
 
+            {/* Botão Entrar */}
             <TouchableOpacity style={estilosGlobais.botaoPrimario} onPress={realizarLogin}>
               <Text style={estilosGlobais.textoBotaoPrimario}>Entrar</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={{ flexDirection: 'row', marginTop: 10 }}>
-            <Text>Não possui uma conta? </Text>
-            <Text style={estilosGlobais.textoLink}>Cadastre-se!</Text>
+            {/* Botão Cadastre-se */}
+            <TouchableOpacity 
+              style={{ flexDirection: 'row', marginTop: 15 }}
+              onPress={() => router.push('/cadastro')} // Temporariamente para a home até você criar a tela de cadastro
+            >
+              <Text>Não possui uma conta? </Text>
+              <Text style={estilosGlobais.textoLink}>Cadastre-se!</Text>
             </TouchableOpacity>
-            
 
+            {/* Botão Esqueci a Senha */}
             <TouchableOpacity style={estilosLogin.botaoEsqueciSenha}>
               <Text style={estilosGlobais.textoLink}>Esqueceu a senha?</Text>
             </TouchableOpacity>
             
           </View>
-
         </KeyboardAvoidingView>
       </View>
     </ImageBackground>
   );
 }
-
