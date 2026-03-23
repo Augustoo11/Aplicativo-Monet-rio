@@ -13,7 +13,7 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router'; 
 
 // Importa os estilos (verifique se os caminhos continuam batendo com sua pasta src)
-import { estilosLogin } from './_estilosLogin'; 
+import { estilosLogin } from '../src/styles/_estilosLogin'; 
 import { estilosGlobais } from '../src/componentes/estilosGlobais'; 
 
 export default function TelaDeLogin() {
