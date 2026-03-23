@@ -1,44 +1,216 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, TextInput } from 'react-native';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  TextInput,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView
+} from 'react-native';
 import { useRouter } from 'expo-router';
-import { estilosGlobais } from '../src/componentes/estilosGlobais'; // Ajuste o caminho se necessário
+import { estilosGlobais } from '../src/componentes/estilosGlobais';
 
 export default function TelaCadastro() {
   const router = useRouter();
 
+  const [nome, setNome] = useState('');
+  const [email, setEmail] = useState('');
+  const [senha, setSenha] = useState('');
+  const [confirmarSenha, setConfirmarSenha] = useState('');
+
+  const [erros, setErros] = useState({
+    nome: '',
+    email: '',
+    senha: '',
+    confirmarSenha: ''
+  });
+
+  function validarEmail(email: string) {
+  return /\S+@\S+\.\S+/.test(email);
+  }
+
+  function cadastrar() {
+    let novosErros = {
+      nome: '',
+      email: '',
+      senha: '',
+      confirmarSenha: ''
+    };
+
+    if (!nome) novosErros.nome = 'Nome é obrigatório';
+
+    if (!email) novosErros.email = 'Email é obrigatório';
+    else if (!validarEmail(email)) novosErros.email = 'Email inválido';
+
+    if (!senha) novosErros.senha = 'Senha é obrigatória';
+    else if (senha.length < 6) novosErros.senha = 'Mínimo 6 caracteres';
+
+    if (!confirmarSenha) novosErros.confirmarSenha = 'Confirme sua senha';
+    else if (senha !== confirmarSenha) novosErros.confirmarSenha = 'As senhas não coincidem';
+
+    setErros(novosErros);
+
+    const temErro = Object.values(novosErros).some(e => e !== '');
+    if (temErro) return;
+
+    Alert.alert('Sucesso', 'Conta criada com sucesso!');
+    router.replace('/(tabs)/home');
+  }
+
+  const tudoPreenchido = nome && email && senha && confirmarSenha;
+
   return (
-    <View style={styles.container}>
-      <Text style={estilosGlobais.tituloPrincipal}>Criar Conta</Text>
-      <Text style={estilosGlobais.subtitulo}>Preencha os dados para começar.</Text>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <ScrollView contentContainerStyle={styles.container}keyboardShouldPersistTaps="handled"
+  showsVerticalScrollIndicator={false}>
+        
+        <Text style={styles.titulo}>Criar Conta</Text>
+        <Text style={styles.subtitulo}>Preencha os dados para começar.</Text>
 
-      {/* Exemplo de campo */}
-      <View style={estilosGlobais.grupoEntrada}>
-        <TextInput 
-          style={estilosGlobais.campoTexto} 
-          placeholder="Nome Completo" 
-        />
-      </View>
+        {/* Nome */}
+        <View style={styles.grupo}>
+          <Text style={styles.label}>
+            Nome Completo <Text style={styles.asterisco}>*</Text>
+          </Text>
+          <TextInput
+            style={[estilosGlobais.campoTexto, styles.input, erros.nome && styles.inputErro]}
+            value={nome}
+            onChangeText={setNome}
+          />
+          {!!erros.nome && <Text style={styles.erro}>{erros.nome}</Text>}
+        </View>
 
-      <TouchableOpacity 
-        style={estilosGlobais.botaoPrimario} 
-        onPress={() => router.replace('/(tabs)/home')}
-      >
-        <Text style={estilosGlobais.textoBotaoPrimario}>Finalizar Cadastro</Text>
-      </TouchableOpacity>
+        {/* Email */}
+        <View style={styles.grupo}>
+          <Text style={styles.label}>
+            Email <Text style={styles.asterisco}>*</Text>
+          </Text>
+          <TextInput
+            style={[estilosGlobais.campoTexto, styles.input, erros.email && styles.inputErro]}
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+          />
+          {!!erros.email && <Text style={styles.erro}>{erros.email}</Text>}
+        </View>
 
-      <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 20 }}>
-        <Text style={estilosGlobais.textoLink}>Já tem uma conta? Faça Login</Text>
-      </TouchableOpacity>
-    </View>
+        {/* Senha */}
+        <View style={styles.grupo}>
+          <Text style={styles.label}>
+            Senha <Text style={styles.asterisco}>*</Text>
+          </Text>
+          <TextInput
+            style={[estilosGlobais.campoTexto, styles.input, erros.senha && styles.inputErro]}
+            value={senha}
+            onChangeText={setSenha}
+            secureTextEntry
+          />
+          {!!erros.senha && <Text style={styles.erro}>{erros.senha}</Text>}
+        </View>
+
+        {/* Confirmar Senha */}
+        <View style={styles.grupo}>
+          <Text style={styles.label}>
+            Confirmar Senha <Text style={styles.asterisco}>*</Text>
+          </Text>
+          <TextInput
+            style={[estilosGlobais.campoTexto, styles.input, erros.confirmarSenha && styles.inputErro]}
+            value={confirmarSenha}
+            onChangeText={setConfirmarSenha}
+            secureTextEntry
+          />
+          {!!erros.confirmarSenha && (
+            <Text style={styles.erro}>{erros.confirmarSenha}</Text>
+          )}
+        </View>
+
+        {/* Botão */}
+        <TouchableOpacity style={[estilosGlobais.botaoPrimario,
+        !tudoPreenchido && { backgroundColor: '#93c5fd' }]} 
+        onPress={cadastrar} disabled={!tudoPreenchido}>
+  <Text style={estilosGlobais.textoBotaoPrimario}>
+    Finalizar Cadastro
+  </Text>
+</TouchableOpacity>
+
+        <TouchableOpacity onPress={() => router.back()}>
+          <Text style={styles.link}>
+            Já tem uma conta? Faça Login
+          </Text>
+        </TouchableOpacity>
+
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flexGrow: 1,
+    padding: 20,
     justifyContent: 'center',
+    alignItems: 'stretch',
+    backgroundColor: '#fff'
+  },
+  titulo: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 10
+  },
+  subtitulo: {
+    textAlign: 'center',
+    marginBottom: 30,
+    color: '#666'
+  },
+  grupo: {
+    width: '100%',
+    marginBottom: 15
+  },
+  label: {
+    fontSize: 14,
+    marginBottom: 5,
+    color: '#333'
+  },
+  asterisco: {
+    color: 'red'
+  },
+  input: {
+    width: '100%',
+    height: 50,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    backgroundColor: '#fff'
+  },
+  inputErro: {
+    borderColor: 'red'
+  },
+  erro: {
+    color: 'red',
+    marginTop: 5
+  },
+  botao: {
+    backgroundColor: '#4A90E2',
+    padding: 15,
+    borderRadius: 10,
     alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 20
+    marginTop: 10
+  },
+  textoBotao: {
+    color: '#fff',
+    fontWeight: 'bold'
+  },
+  link: {
+    textAlign: 'center',
+    marginTop: 20,
+    color: '#4A90E2'
   }
 });
