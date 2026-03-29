@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router'; 
+import { StatusBar } from 'react-native';
+import { useEffect } from 'react';
 
 // Importa os estilos (verifique se os caminhos continuam batendo com sua pasta src)
 import { estilosLogin } from '../src/styles/_estilosLogin'; 
@@ -21,6 +23,12 @@ export default function TelaDeLogin() {
   const [email, definirEmail] = useState<string>('');
   const [senha, definirSenha] = useState<string>('');
   const router = useRouter(); 
+
+  useEffect(() => {
+  StatusBar.setBarStyle('light-content');
+  StatusBar.setBackgroundColor('transparent');
+  StatusBar.setTranslucent(true);
+}, []);
 
   const realizarLogin = () => {
     if (email !== '' && senha !== '') {
@@ -33,7 +41,7 @@ export default function TelaDeLogin() {
 
   return (
     <ImageBackground
-      source={{ uri: 'https://static.vecteezy.com/ti/fotos-gratis/p1/4493283-fundo-gradiente-azul-claro-e-azul-escuro-gratis-foto.jpg' }}
+      source={require('../src/assets/Fundo.png')}
       style={estilosLogin.imagemFundo}
     >
       <View style={estilosLogin.peliculaEscura}>

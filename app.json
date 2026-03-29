@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Aplicativo-Monet-rio",
-    "slug": "Aplicativo-Monet-rio",
-    "scheme": "meu-app-monetario",
+    "name": "GestorFin",
+    "slug": "GestorFin",
+    "scheme": "GestorFin",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./src/assets/logo.png",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -30,5 +30,6 @@
     "plugins": [
       "expo-router"
     ]
+    
   }
 }
