@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  Image,
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router'; 
@@ -32,7 +33,7 @@ export default function TelaDeLogin() {
 
   return (
     <ImageBackground
-      source={{ uri: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?q=80&w=1920&auto=format&fit=crop' }}
+      source={{ uri: 'https://static.vecteezy.com/ti/fotos-gratis/p1/4493283-fundo-gradiente-azul-claro-e-azul-escuro-gratis-foto.jpg' }}
       style={estilosLogin.imagemFundo}
     >
       <View style={estilosLogin.peliculaEscura}>
@@ -43,10 +44,16 @@ export default function TelaDeLogin() {
           <View style={estilosLogin.cartaoLogin}>
             
             <View style={estilosLogin.iconeTopo}>
-              <FontAwesome5 name="chart-line" size={32} color="#3b82f6" />
+            <Image 
+            source={require('../src/assets/logo.png')} 
+            style={estilosLogin.iconeTopo}
+            height={210}
+            width={210}
+            resizeMode=  'contain'
+            />
             </View>
 
-            <Text style={estilosGlobais.tituloPrincipal}>GESTORFIN</Text>
+            <Text style={estilosGlobais.tituloPrincipal}></Text>
             <Text style={estilosGlobais.subtitulo}>Controle seu futuro financeiro.</Text>
 
             {/* Campo de E-mail */}

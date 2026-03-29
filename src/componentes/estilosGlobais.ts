@@ -12,6 +12,7 @@ export const estilosGlobais = StyleSheet.create({
     fontSize: 14,
     color: '#4b5563',
     marginBottom: 30,
+    opacity: 0.7
   },
 
   // --- INPUTS (Campos de Digitação) ---
