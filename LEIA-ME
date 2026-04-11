@@ -1,7 +1,7 @@
-Código para executar assim que abrir o codespace:   rm -rf node_modules
+Código para executar assim que abrir o codespace (NO TERMINAL):   rm -rf node_modules
 rm package-lock.json (pode ser os dois juntos de uma vez)
 
 logo após rode: npm install
 
-em seqência: npx expo start --tunell 
+em seqência: npx expo start --tunnel 
 quando aparecer a mesnagem de confirmação aperte y
