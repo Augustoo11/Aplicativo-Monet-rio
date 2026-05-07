@@ -1,3 +1,6 @@
+// app/(tabs)/add.tsx
+// Tela de adicionar transação — salva no store global
+
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, StyleSheet,
@@ -6,6 +9,7 @@ import {
   StatusBar, Image
 } from 'react-native';
 import { estilosLogin } from '../../src/styles/_estilosLogin';
+import { useTransacoesStore } from '../../src/store/src/store/useTransacoesStore';
 
 const DESPESAS = [
   { id: 'alimentacao', label: 'Alimentação', emoji: '🍔' },
@@ -28,10 +32,19 @@ const RECEITAS = [
 
 export default function Add() {
   const [valor, setValor] = useState('');
-  const [tipo, setTipo] = useState('despesa');
+  const [tipo, setTipo] = useState<'despesa' | 'receita'>('despesa');
   const [categoria, setCategoria] = useState('');
   const [abrirCat, setAbrirCat] = useState(false);
-  const [lista, setLista] = useState<any[]>([]);
+
+  // Conecta ao store global
+  const {
+  adicionarTransacao,
+  removerTransacao,
+  ultimasTransacoes,
+  totalReceitas,
+  totalDespesas,
+} = useTransacoesStore();
+  const lista = ultimasTransacoes(50); // mostra até 50 na tela
 
   const categorias = tipo === 'despesa' ? DESPESAS : RECEITAS;
   const catAtual = categorias.find(c => c.id === categoria);
@@ -42,7 +55,7 @@ export default function Add() {
     return `R$ ${(parseInt(n) / 100).toFixed(2).replace('.', ',')}`;
   }
 
-  function toNumero(v: string) {
+  function textoParaNumero(v: string) {
     return parseFloat(v.replace('R$ ', '').replace(',', '.') || '0');
   }
 
@@ -51,26 +64,39 @@ export default function Add() {
     if (!categoria) return Alert.alert('Erro', 'Selecione uma categoria!');
 
     const cat = categorias.find(c => c.id === categoria)!;
-    setLista([{ id: Date.now().toString(), valor, tipo, emoji: cat.emoji, label: cat.label }, ...lista]);
+    const numeroValor = textoParaNumero(valor);
+
+    adicionarTransacao({
+      valor: numeroValor,
+      valorFormatado: valor,
+      tipo,
+      categoriaId: cat.id,
+      categoriaLabel: cat.label,
+      emoji: cat.emoji,
+    });
+
+    // Limpa o formulário
     setValor('');
     setCategoria('');
     setAbrirCat(false);
     setTipo('despesa');
+
+    Alert.alert('✅ Salvo!', `${cat.emoji} ${cat.label} — ${valor} registrado.`);
   }
 
   function excluir(id: string) {
     Alert.alert('Excluir', 'Remover esta transação?', [
       { text: 'Cancelar', style: 'cancel' },
-      { text: 'Excluir', style: 'destructive', onPress: () => setLista(lista.filter(t => t.id !== id)) },
+      { text: 'Excluir', style: 'destructive', onPress: () => removerTransacao(id) },
     ]);
   }
 
-  const totalReceitas = lista.filter(t => t.tipo === 'receita').reduce((acc, t) => acc + toNumero(t.valor), 0);
-  const totalDespesas = lista.filter(t => t.tipo === 'despesa').reduce((acc, t) => acc + toNumero(t.valor), 0);
-  const saldo = totalReceitas - totalDespesas;
+  const receitasTotal = totalReceitas();
+  const despesasTotal = totalDespesas();
+  const saldoTotal = receitasTotal - despesasTotal;
 
   return (
-    <ImageBackground source={require('../assets/Fundo.png')} style={estilosLogin.imagemFundo}>
+    <ImageBackground source={require('../../assets/Fundo.png')} style={estilosLogin.imagemFundo}>
 
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
@@ -93,13 +119,13 @@ export default function Add() {
               style={[s.tipoBotao, tipo === 'receita' && s.receita]}
               onPress={() => { setTipo('receita'); setCategoria(''); }}
             >
-              <Text style={s.tipoTexto}>Receita</Text>
+              <Text style={s.tipoTexto}>💰 Receita</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[s.tipoBotao, tipo === 'despesa' && s.despesa]}
               onPress={() => { setTipo('despesa'); setCategoria(''); }}
             >
-              <Text style={s.tipoTexto}>Despesa</Text>
+              <Text style={s.tipoTexto}>💸 Despesa</Text>
             </TouchableOpacity>
           </View>
 
@@ -138,43 +164,53 @@ export default function Add() {
           />
 
           <TouchableOpacity style={s.botao} onPress={salvar}>
-            <Text style={s.botaoTexto}>Salvar</Text>
+            <Text style={s.botaoTexto}>Salvar Transação</Text>
           </TouchableOpacity>
 
-          {/* Lista de lançamentos */}
+          {/* Resumo do store global */}
           {lista.length > 0 && (
             <View style={{ marginTop: 30 }}>
 
-              {/* Resumo */}
               <View style={s.resumo}>
                 <View style={s.resumoItem}>
                   <Text style={s.resumoLabel}>Receitas</Text>
-                  <Text style={[s.resumoValor, { color: '#4CAF50' }]}>+ R$ {totalReceitas.toFixed(2).replace('.', ',')}</Text>
+                  <Text style={[s.resumoValor, { color: '#4CAF50' }]}>
+                    + R$ {receitasTotal.toFixed(2).replace('.', ',')}
+                  </Text>
                 </View>
                 <View style={s.divider} />
                 <View style={s.resumoItem}>
                   <Text style={s.resumoLabel}>Despesas</Text>
-                  <Text style={[s.resumoValor, { color: '#F44336' }]}>- R$ {totalDespesas.toFixed(2).replace('.', ',')}</Text>
+                  <Text style={[s.resumoValor, { color: '#F44336' }]}>
+                    - R$ {despesasTotal.toFixed(2).replace('.', ',')}
+                  </Text>
                 </View>
                 <View style={s.divider} />
                 <View style={s.resumoItem}>
                   <Text style={s.resumoLabel}>Saldo</Text>
-                  <Text style={[s.resumoValor, { color: saldo >= 0 ? '#4CAF50' : '#F44336' }]}>R$ {saldo.toFixed(2).replace('.', ',')}</Text>
+                  <Text style={[s.resumoValor, { color: saldoTotal >= 0 ? '#4CAF50' : '#F44336' }]}>
+                    R$ {saldoTotal.toFixed(2).replace('.', ',')}
+                  </Text>
                 </View>
               </View>
 
               <Text style={s.secaoLabel}>Lançamentos</Text>
 
               {lista.map(item => (
-                <TouchableOpacity key={item.id} style={s.card} onLongPress={() => excluir(item.id)} activeOpacity={0.8}>
+                <TouchableOpacity
+                  key={item.id}
+                  style={s.card}
+                  onLongPress={() => excluir(item.id)}
+                  activeOpacity={0.8}
+                >
                   <View style={[s.cardLinha, { backgroundColor: item.tipo === 'receita' ? '#4CAF50' : '#F44336' }]} />
                   <Text style={{ fontSize: 22, paddingHorizontal: 12 }}>{item.emoji}</Text>
                   <View style={{ flex: 1, paddingVertical: 14 }}>
-                    <Text style={s.cardLabel}>{item.label}</Text>
+                    <Text style={s.cardLabel}>{item.categoriaLabel}</Text>
                     <Text style={s.cardTipo}>{item.tipo === 'receita' ? 'Receita' : 'Despesa'}</Text>
                   </View>
                   <Text style={[s.cardValor, { color: item.tipo === 'receita' ? '#4CAF50' : '#F44336' }]}>
-                    {item.tipo === 'receita' ? '+' : '-'} {item.valor}
+                    {item.tipo === 'receita' ? '+' : '-'} {item.valorFormatado}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -208,9 +244,9 @@ const s = StyleSheet.create({
   catItemAtivo: { backgroundColor: 'rgba(100,160,255,0.18)', borderColor: '#4e82f7' },
   catLabel: { fontSize: 9, color: 'rgba(255,255,255,0.45)', marginTop: 4, textAlign: 'center' },
   catLabelAtivo: { color: '#7ab0ff', fontWeight: '600' },
-  input: { backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', padding: 15, borderRadius: 10, marginBottom: 15, color: '#fff' },
-  botao: { backgroundColor: '#2176ff', padding: 15, borderRadius: 10, alignItems: 'center' },
-  botaoTexto: { color: '#fff', fontWeight: 'bold' },
+  input: { backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', padding: 15, borderRadius: 10, marginBottom: 15, color: '#fff', fontSize: 18 },
+  botao: { backgroundColor: '#2176ff', padding: 16, borderRadius: 10, alignItems: 'center' },
+  botaoTexto: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
   resumo: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 12, padding: 16, marginBottom: 20, justifyContent: 'space-between', alignItems: 'center' },
   resumoItem: { flex: 1, alignItems: 'center' },
   resumoLabel: { fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 4 },
