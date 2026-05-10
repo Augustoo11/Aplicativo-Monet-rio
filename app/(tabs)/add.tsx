@@ -35,17 +35,17 @@ export default function Add() {
   const [tipo, setTipo] = useState<'despesa' | 'receita'>('despesa');
   const [categoria, setCategoria] = useState('');
   const [abrirCat, setAbrirCat] = useState(false);
+  const [descricaoOutros, setDescricaoOutros] = useState('');
 
-  // Conecta ao store global
   const {
-  adicionarTransacao,
-  removerTransacao,
-  ultimasTransacoes,
-  totalReceitas,
-  totalDespesas,
-} = useTransacoesStore();
-  const lista = ultimasTransacoes(50); // mostra até 50 na tela
+    adicionarTransacao,
+    removerTransacao,
+    ultimasTransacoes,
+    totalReceitas,
+    totalDespesas,
+  } = useTransacoesStore();
 
+  const lista = ultimasTransacoes(50);
   const categorias = tipo === 'despesa' ? DESPESAS : RECEITAS;
   const catAtual = categorias.find(c => c.id === categoria);
 
@@ -63,7 +63,17 @@ export default function Add() {
     if (!valor) return Alert.alert('Erro', 'Informe o valor!');
     if (!categoria) return Alert.alert('Erro', 'Selecione uma categoria!');
 
+    if (categoria === 'outros' && !descricaoOutros.trim()) {
+      return Alert.alert('Erro', 'Descreva o item!');
+    }
+
     const cat = categorias.find(c => c.id === categoria)!;
+
+    const nomeCategoria =
+      categoria === 'outros' && descricaoOutros.trim()
+        ? descricaoOutros.trim()
+        : cat.label;
+
     const numeroValor = textoParaNumero(valor);
 
     adicionarTransacao({
@@ -71,17 +81,17 @@ export default function Add() {
       valorFormatado: valor,
       tipo,
       categoriaId: cat.id,
-      categoriaLabel: cat.label,
+      categoriaLabel: nomeCategoria,
       emoji: cat.emoji,
     });
 
-    // Limpa o formulário
     setValor('');
     setCategoria('');
     setAbrirCat(false);
     setTipo('despesa');
+    setDescricaoOutros('');
 
-    Alert.alert('✅ Salvo!', `${cat.emoji} ${cat.label} — ${valor} registrado.`);
+    Alert.alert('✅ Salvo!', `${cat.emoji} ${nomeCategoria} — ${valor} registrado.`);
   }
 
   function excluir(id: string) {
@@ -97,13 +107,11 @@ export default function Add() {
 
   return (
     <ImageBackground source={require('../../assets/Fundo.png')} style={estilosLogin.imagemFundo}>
-
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={s.container}>
 
-          {/* Logo + título */}
           <View style={s.topo}>
             <Image
               source={require('../assets/logo.png')}
@@ -113,23 +121,30 @@ export default function Add() {
             <Text style={s.titulo}>Nova Transação</Text>
           </View>
 
-          {/* Receita ou Despesa */}
           <View style={s.tipoContainer}>
             <TouchableOpacity
               style={[s.tipoBotao, tipo === 'receita' && s.receita]}
-              onPress={() => { setTipo('receita'); setCategoria(''); }}
+              onPress={() => {
+                setTipo('receita');
+                setCategoria('');
+                setDescricaoOutros('');
+              }}
             >
               <Text style={s.tipoTexto}>💰 Receita</Text>
             </TouchableOpacity>
+
             <TouchableOpacity
               style={[s.tipoBotao, tipo === 'despesa' && s.despesa]}
-              onPress={() => { setTipo('despesa'); setCategoria(''); }}
+              onPress={() => {
+                setTipo('despesa');
+                setCategoria('');
+                setDescricaoOutros('');
+              }}
             >
               <Text style={s.tipoTexto}>💸 Despesa</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Botão que abre as categorias */}
           <TouchableOpacity style={s.catBotao} onPress={() => setAbrirCat(!abrirCat)}>
             <Text style={[s.catBotaoTexto, catAtual && s.catBotaoTextoAtivo]}>
               {catAtual ? `${catAtual.emoji}  ${catAtual.label}` : 'Selecionar categoria'}
@@ -137,23 +152,40 @@ export default function Add() {
             <Text style={s.seta}>{abrirCat ? '▲' : '▼'}</Text>
           </TouchableOpacity>
 
-          {/* Grid de categorias */}
           {abrirCat && (
             <View style={s.grid}>
               {categorias.map(cat => (
                 <TouchableOpacity
                   key={cat.id}
                   style={[s.catItem, categoria === cat.id && s.catItemAtivo]}
-                  onPress={() => { setCategoria(cat.id); setAbrirCat(false); }}
+                  onPress={() => {
+                    setCategoria(cat.id);
+                    setAbrirCat(false);
+
+                    if (cat.id !== 'outros') {
+                      setDescricaoOutros('');
+                    }
+                  }}
                 >
                   <Text style={{ fontSize: 22 }}>{cat.emoji}</Text>
-                  <Text style={[s.catLabel, categoria === cat.id && s.catLabelAtivo]}>{cat.label}</Text>
+                  <Text style={[s.catLabel, categoria === cat.id && s.catLabelAtivo]}>
+                    {cat.label}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </View>
           )}
 
-          {/* Valor */}
+          {categoria === 'outros' && (
+            <TextInput
+              style={s.input}
+              placeholder="Descreva o item"
+              placeholderTextColor="#667"
+              value={descricaoOutros}
+              onChangeText={setDescricaoOutros}
+            />
+          )}
+
           <TextInput
             style={s.input}
             placeholder="Valor (R$)"
@@ -167,10 +199,8 @@ export default function Add() {
             <Text style={s.botaoTexto}>Salvar Transação</Text>
           </TouchableOpacity>
 
-          {/* Resumo do store global */}
           {lista.length > 0 && (
             <View style={{ marginTop: 30 }}>
-
               <View style={s.resumo}>
                 <View style={s.resumoItem}>
                   <Text style={s.resumoLabel}>Receitas</Text>
@@ -178,14 +208,18 @@ export default function Add() {
                     + R$ {receitasTotal.toFixed(2).replace('.', ',')}
                   </Text>
                 </View>
+
                 <View style={s.divider} />
+
                 <View style={s.resumoItem}>
                   <Text style={s.resumoLabel}>Despesas</Text>
                   <Text style={[s.resumoValor, { color: '#F44336' }]}>
                     - R$ {despesasTotal.toFixed(2).replace('.', ',')}
                   </Text>
                 </View>
+
                 <View style={s.divider} />
+
                 <View style={s.resumoItem}>
                   <Text style={s.resumoLabel}>Saldo</Text>
                   <Text style={[s.resumoValor, { color: saldoTotal >= 0 ? '#4CAF50' : '#F44336' }]}>
@@ -204,11 +238,18 @@ export default function Add() {
                   activeOpacity={0.8}
                 >
                   <View style={[s.cardLinha, { backgroundColor: item.tipo === 'receita' ? '#4CAF50' : '#F44336' }]} />
-                  <Text style={{ fontSize: 22, paddingHorizontal: 12 }}>{item.emoji}</Text>
+
+                  <Text style={{ fontSize: 22, paddingHorizontal: 12 }}>
+                    {item.emoji}
+                  </Text>
+
                   <View style={{ flex: 1, paddingVertical: 14 }}>
                     <Text style={s.cardLabel}>{item.categoriaLabel}</Text>
-                    <Text style={s.cardTipo}>{item.tipo === 'receita' ? 'Receita' : 'Despesa'}</Text>
+                    <Text style={s.cardTipo}>
+                      {item.tipo === 'receita' ? 'Receita' : 'Despesa'}
+                    </Text>
                   </View>
+
                   <Text style={[s.cardValor, { color: item.tipo === 'receita' ? '#4CAF50' : '#F44336' }]}>
                     {item.tipo === 'receita' ? '+' : '-'} {item.valorFormatado}
                   </Text>
