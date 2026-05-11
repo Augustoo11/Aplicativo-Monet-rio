@@ -1,329 +1,826 @@
-// app/(tabs)/home.tsx
-// Home — lê dados reais do store global de transações
+import React, { useMemo, useState, useEffect } from 'react';
 
-import React from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
+  ScrollView,
+  Modal,
+  TextInput,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
   Image,
 } from 'react-native';
+
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { FontAwesome5, Ionicons } from '@expo/vector-icons';
+
 import { useTransacoesStore } from '../../src/store/src/store/useTransacoesStore';
 
-const CORES_CATEGORIA: Record<string, string> = {
-  moradia: '#3B82F6',
-  alimentacao: '#EF4444',
-  transporte: '#F59E0B',
-  saude: '#10B981',
-  lazer: '#A855F7',
-  educacao: '#06B6D4',
-  entretenimento: '#F97316',
-  outros: '#9CA3AF',
-};
-
 export default function Home() {
-  const router = useRouter();
-  const { totalReceitas, totalDespesas, saldo, transacoes, totalPorCategoria } = useTransacoesStore();
+  const {
+    totalReceitas,
+    totalDespesas,
+    saldo,
+    transacoes,
+    adicionarTransacao,
+  } = useTransacoesStore();
+
+  const [abaAtiva, setAbaAtiva] = useState<'inicio' | 'historico'>('inicio');
+  const [modalVisible, setModalVisible] = useState(false);
+  const [nomeUsuario, setNomeUsuario] = useState('Usuário');
+
+  const [tipoSelecionado, setTipoSelecionado] = useState<'receita' | 'despesa' | null>(null);
+  const [nomeTransacao, setNomeTransacao] = useState('');
+  const [valorTransacao, setValorTransacao] = useState('');
+  const [descricaoTransacao, setDescricaoTransacao] = useState('');
+
+  useEffect(() => {
+    const carregarNome = async () => {
+      const nomeSalvo = await AsyncStorage.getItem('@usuario_nome');
+
+      if (nomeSalvo) {
+        setNomeUsuario(nomeSalvo);
+      }
+    };
+
+    carregarNome();
+  }, []);
 
   const receitas = totalReceitas();
   const despesas = totalDespesas();
   const saldoAtual = saldo();
-  const economiaPct = receitas > 0 ? Math.round((saldoAtual / receitas) * 100) : 0;
-  const ultimas = [...transacoes]
-    .sort((a, b) => b.data.getTime() - a.data.getTime())
-    .slice(0, 5);
-  const categorias = totalPorCategoria().slice(0, 3);
 
-  const fmt = (v: number) =>
-    v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const ultimasTransacoes = useMemo(() => {
+    return [...transacoes].sort((a, b) => b.data.getTime() - a.data.getTime());
+  }, [transacoes]);
 
-  const temDados = ultimas.length > 0;
+  const formatarMoeda = (valor: number) => {
+    return valor.toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    });
+  };
+
+  const mesAtual = new Date().toLocaleString('pt-BR', {
+    month: 'long',
+    year: 'numeric',
+  });
+
+  const mesFormatado = mesAtual.charAt(0).toUpperCase() + mesAtual.slice(1);
+
+  const iniciaisUsuario = nomeUsuario
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((nome) => nome[0].toUpperCase())
+    .join('');
+
+  const salvarTransacao = () => {
+    if (!tipoSelecionado || !nomeTransacao || !valorTransacao) {
+      Alert.alert('Atenção', 'Preencha o nome e o valor.');
+      return;
+    }
+
+    const valorNumerico = Number(valorTransacao.replace(',', '.'));
+
+    if (isNaN(valorNumerico) || valorNumerico <= 0) {
+      Alert.alert('Atenção', 'Digite um valor válido.');
+      return;
+    }
+
+    adicionarTransacao({
+      tipo: tipoSelecionado,
+      valor: valorNumerico,
+      valorFormatado: valorNumerico.toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+      }),
+      categoriaId: nomeTransacao.toLowerCase().replace(/\s/g, '-'),
+      categoriaLabel: nomeTransacao,
+      emoji: tipoSelecionado === 'receita' ? '💰' : '🧾',
+    });
+
+    setNomeTransacao('');
+    setValorTransacao('');
+    setDescricaoTransacao('');
+    setTipoSelecionado(null);
+    setModalVisible(false);
+  };
+
+  const fecharModal = () => {
+    setModalVisible(false);
+    setTipoSelecionado(null);
+    setNomeTransacao('');
+    setValorTransacao('');
+    setDescricaoTransacao('');
+  };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* HEADER */}
+    <SafeAreaView style={styles.container}>
+      <View style={styles.content}>
+
         <View style={styles.header}>
-          <View>
-            <Text style={styles.pageTitle}>Início</Text>
-            <Text style={styles.pageSubtitle}>Visão geral das suas finanças</Text>
-          </View>
-          <View style={styles.logoBox}>
-            <Image
-              source={require('../assets/logo.png')}
-              style={styles.logo}
-              resizeMode="contain"
-            />
-          </View>
-        </View>
-
-        {/* CARD SALDO */}
-        <View style={styles.balanceCard}>
-          <Text style={styles.balanceLabel}>Saldo atual</Text>
-          <Text style={[styles.balanceValue, { color: saldoAtual >= 0 ? '#10B981' : '#EF4444' }]}>
-            {fmt(saldoAtual)}
-          </Text>
-          <Text style={styles.balanceSubtext}>
-            {temDados
-              ? 'Calculado com base nas suas transações registradas'
-              : 'Nenhuma transação registrada ainda'}
-          </Text>
-        </View>
-
-        {/* BOTÕES RÁPIDOS */}
-        <View style={styles.actionsRow}>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.incomeButton]}
-            onPress={() => router.push('/(tabs)/add')}
-          >
-            <Text style={styles.actionText}>+ Receita</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.expenseButton]}
-            onPress={() => router.push('/(tabs)/add')}
-          >
-            <Text style={styles.actionText}>− Despesa</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* RESUMO DO PERÍODO */}
-        <View style={styles.summaryCard}>
-          <View style={styles.summaryHeader}>
-            <Text style={styles.cardTitle}>Resumo do período</Text>
-            <Text style={styles.monthText}>
-              {new Date().toLocaleString('pt-BR', { month: 'long' })}
-            </Text>
-          </View>
-
-          <View style={styles.summaryBoxes}>
-            <View style={styles.smallCard}>
-              <Text style={styles.smallCardLabel}>Receitas</Text>
-              <Text style={styles.incomeValue}>{fmt(receitas)}</Text>
-              <Text style={styles.incomeDescription}>
-                {temDados ? 'Total de entradas registradas' : 'Nenhuma receita ainda'}
-              </Text>
+          <View style={styles.brandArea}>
+            <View style={styles.logoContainer}>
+              <Image
+                source={require('../../src/assets/logo.png')}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
             </View>
 
-            <View style={styles.smallCard}>
-              <Text style={styles.smallCardLabel}>Despesas</Text>
-              <Text style={styles.expenseValue}>{fmt(despesas)}</Text>
-              <Text style={styles.expenseDescription}>
-                {temDados
-                  ? `${receitas > 0 ? Math.round((despesas / receitas) * 100) : 0}% da receita total`
-                  : 'Nenhuma despesa ainda'}
-              </Text>
-            </View>
+            <Text style={styles.logoText}>GestorFin</Text>
           </View>
 
-          {temDados && (
+          <View style={styles.profileCircle}>
+            <Text style={styles.profileText}>{iniciaisUsuario}</Text>
+          </View>
+        </View>
+
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 140 }}
+        >
+          {abaAtiva === 'inicio' ? (
             <>
-              <Text style={styles.economyLabel}>Saldo do período</Text>
-              <View style={styles.progressBarBackground}>
-                <View
-                  style={[
-                    styles.progressBarFill,
-                    {
-                      width: `${Math.min(Math.max(economiaPct, 0), 100)}%`,
-                      backgroundColor: saldoAtual >= 0 ? '#10B981' : '#EF4444',
-                    },
-                  ]}
-                />
-              </View>
-              <Text style={[styles.savedText, { color: saldoAtual >= 0 ? '#10B981' : '#EF4444' }]}>
-                {saldoAtual >= 0 ? '+' : ''} {fmt(saldoAtual)}
+              <Text style={styles.helloText}>
+                Olá, {nomeUsuario.split(' ')[0]} · {mesFormatado}
               </Text>
-              {receitas > 0 && (
-                <Text style={styles.economyText}>
-                  {economiaPct >= 0
-                    ? `Economia de ${economiaPct}% da renda`
-                    : `Déficit de ${Math.abs(economiaPct)}% da renda`}
-                </Text>
-              )}
-            </>
-          )}
 
-          {!temDados && (
-            <TouchableOpacity
-              style={styles.emptyButton}
-              onPress={() => router.push('/(tabs)/add')}
-            >
-              <Text style={styles.emptyButtonText}>+ Adicionar primeira transação</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {/* PRINCIPAIS DESPESAS POR CATEGORIA */}
-        {categorias.length > 0 && (
-          <View style={styles.expensesCard}>
-            <View style={styles.expensesHeader}>
-              <Text style={styles.cardTitle}>Principais despesas</Text>
-            </View>
-            <Text style={styles.expensesDescription}>
-              Categorias com maior impacto no total de despesas.
-            </Text>
-
-            {categorias.map((cat, index) => {
-              const pct = despesas > 0 ? (cat.total / despesas) * 100 : 0;
-              const cor = CORES_CATEGORIA[cat.categoriaId] ?? '#9CA3AF';
-              return (
-                <View
-                  key={cat.categoriaId}
-                  style={[
-                    styles.expenseItem,
-                    index === categorias.length - 1 && styles.noBorder,
-                  ]}
-                >
-                  <View style={styles.expenseTopRow}>
-                    <View style={styles.expenseLeft}>
-                      <View style={[styles.expenseDot, { backgroundColor: cor }]} />
-                      <View>
-                        <Text style={styles.expenseName}>
-                          {cat.emoji} {cat.label}
-                        </Text>
-                        <Text style={styles.expenseSubtext}>
-                          {Math.round(pct)}% do total de despesas
-                        </Text>
-                      </View>
-                    </View>
-                    <Text style={styles.expenseValueText}>{fmt(cat.total)}</Text>
-                  </View>
-                  <View style={styles.progressContainer}>
-                    <View style={styles.progressBg}>
-                      <View
-                        style={[
-                          styles.progressFill,
-                          { width: `${pct}%`, backgroundColor: cor },
-                        ]}
-                      />
-                    </View>
-                  </View>
-                </View>
-              );
-            })}
-          </View>
-        )}
-
-        {/* ÚLTIMAS TRANSAÇÕES */}
-        {ultimas.length > 0 && (
-          <View style={styles.expensesCard}>
-            <Text style={styles.cardTitle}>Últimas transações</Text>
-            <Text style={styles.expensesDescription}>
-              Pressione e segure em Add para excluir.
-            </Text>
-
-            {ultimas.map((item, index) => (
-              <View
-                key={item.id}
+              <Text
                 style={[
-                  styles.transacaoItem,
-                  index === ultimas.length - 1 && styles.noBorder,
+                  styles.balance,
+                  { color: saldoAtual >= 0 ? '#22C55E' : '#EF4444' },
                 ]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
               >
-                <Text style={{ fontSize: 24, marginRight: 12 }}>{item.emoji}</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.expenseName}>{item.categoriaLabel}</Text>
-                  <Text style={styles.expenseSubtext}>
-                    {item.tipo === 'receita' ? 'Receita' : 'Despesa'} ·{' '}
-                    {item.data.toLocaleDateString('pt-BR')}
+                {formatarMoeda(saldoAtual)}
+              </Text>
+
+              <Text style={styles.balanceLabel}>valor líquido do mês</Text>
+
+              <View style={styles.cardsRow}>
+                <View style={styles.card}>
+                  <View style={styles.cardTop}>
+                    <View style={styles.dotGreen} />
+                    <Text style={styles.cardLabel}>Renda</Text>
+                  </View>
+
+                  <Text
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    style={styles.greenText}
+                  >
+                    {formatarMoeda(receitas)}
                   </Text>
                 </View>
-                <Text
-                  style={[
-                    styles.expenseValueText,
-                    { color: item.tipo === 'receita' ? '#10B981' : '#EF4444', fontWeight: '700' },
-                  ]}
-                >
-                  {item.tipo === 'receita' ? '+' : '−'} {item.valorFormatado}
-                </Text>
-              </View>
-            ))}
-          </View>
-        )}
 
-        {/* DICA FINAL */}
-        {temDados && (
-          <View style={styles.tipCard}>
-            <Text style={styles.cardTitle}>Análise rápida</Text>
-            <Text style={styles.tipText}>
-              {saldoAtual >= 0
-                ? `Seu saldo está positivo em ${fmt(saldoAtual)}. Continue controlando seus gastos! 🎯`
-                : `Suas despesas estão ${fmt(Math.abs(saldoAtual))} acima das receitas. Revise seus gastos. ⚠️`}
+                <View style={styles.card}>
+                  <View style={styles.cardTop}>
+                    <View style={styles.dotRed} />
+                    <Text style={styles.cardLabel}>Despesas</Text>
+                  </View>
+
+                  <Text
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    style={styles.redText}
+                  >
+                    {formatarMoeda(despesas)}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.transactionsHeader}>
+                <Text style={styles.sectionTitle}>TRANSAÇÕES</Text>
+
+                <TouchableOpacity onPress={() => setAbaAtiva('historico')}>
+                  <Text style={styles.viewAll}>Ver tudo</Text>
+                </TouchableOpacity>
+              </View>
+
+              {ultimasTransacoes.length === 0 && (
+                <Text style={styles.emptyText}>
+                  Nenhuma transação adicionada ainda.
+                </Text>
+              )}
+
+              {ultimasTransacoes.slice(0, 5).map((item) => (
+                <View style={styles.transactionItem} key={item.id}>
+                  <View style={styles.iconBox}>
+                    <Ionicons
+                      name={item.tipo === 'receita' ? 'wallet-outline' : 'arrow-down-outline'}
+                      size={20}
+                      color={item.tipo === 'receita' ? '#22C55E' : '#EF4444'}
+                    />
+                  </View>
+
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.transactionTitle}>
+                      {item.categoriaLabel}
+                    </Text>
+
+                    <Text style={styles.transactionDate}>
+                      {item.data.toLocaleDateString('pt-BR')}
+                    </Text>
+                  </View>
+
+                  <Text
+                    style={[
+                      styles.transactionValue,
+                      {
+                        color: item.tipo === 'receita' ? '#22C55E' : '#EF4444',
+                      },
+                    ]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                  >
+                    {item.tipo === 'receita' ? '+' : '-'}
+                    {item.valorFormatado}
+                  </Text>
+                </View>
+              ))}
+            </>
+          ) : (
+            <>
+              <Text style={styles.historyTitle}>Histórico completo</Text>
+
+              {ultimasTransacoes.length === 0 && (
+                <Text style={styles.emptyText}>
+                  Nenhuma transação no histórico.
+                </Text>
+              )}
+
+              {ultimasTransacoes.map((item) => (
+                <View style={styles.transactionItem} key={item.id}>
+                  <View style={styles.iconBox}>
+                    <Ionicons
+                      name={item.tipo === 'receita' ? 'wallet-outline' : 'arrow-down-outline'}
+                      size={20}
+                      color={item.tipo === 'receita' ? '#22C55E' : '#EF4444'}
+                    />
+                  </View>
+
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.transactionTitle}>
+                      {item.categoriaLabel}
+                    </Text>
+
+                    <Text style={styles.transactionDate}>
+                      {item.data.toLocaleDateString('pt-BR')}
+                    </Text>
+                  </View>
+
+                  <Text
+                    style={[
+                      styles.transactionValue,
+                      {
+                        color: item.tipo === 'receita' ? '#22C55E' : '#EF4444',
+                      },
+                    ]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                  >
+                    {item.tipo === 'receita' ? '+' : '-'}
+                    {item.valorFormatado}
+                  </Text>
+                </View>
+              ))}
+            </>
+          )}
+        </ScrollView>
+
+        <View style={styles.bottomBar}>
+          <TouchableOpacity
+            style={styles.bottomButton}
+            onPress={() => setAbaAtiva('inicio')}
+          >
+            <FontAwesome5
+              name="th-large"
+              size={20}
+              color={abaAtiva === 'inicio' ? '#3B82F6' : '#5C6F91'}
+            />
+
+            <Text
+              style={[
+                styles.bottomText,
+                { color: abaAtiva === 'inicio' ? '#3B82F6' : '#5C6F91' },
+              ]}
+            >
+              Início
             </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => setModalVisible(true)}
+          >
+            <FontAwesome5 name="plus" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.bottomButton}
+            onPress={() => setAbaAtiva('historico')}
+          >
+            <Ionicons
+              name="time-outline"
+              size={22}
+              color={abaAtiva === 'historico' ? '#3B82F6' : '#5C6F91'}
+            />
+
+            <Text
+              style={[
+                styles.bottomText,
+                { color: abaAtiva === 'historico' ? '#3B82F6' : '#5C6F91' },
+              ]}
+            >
+              Histórico
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <Modal visible={modalVisible} transparent animationType="slide">
+          <View style={styles.modalOverlay}>
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              style={styles.keyboardView}
+            >
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                <View style={styles.modalContent}>
+                  <View style={styles.modalLine} />
+
+                  <Text style={styles.modalTitle}>
+                    O que deseja registrar?
+                  </Text>
+
+                  <View style={styles.modalButtons}>
+                    <TouchableOpacity
+                      style={[
+                        styles.incomeModal,
+                        tipoSelecionado === 'receita' && styles.incomeSelected,
+                      ]}
+                      onPress={() => setTipoSelecionado('receita')}
+                    >
+                      <FontAwesome5 name="arrow-up" size={24} color="#22C55E" />
+
+                      <Text
+                        numberOfLines={2}
+                        adjustsFontSizeToFit
+                        style={styles.modalButtonTitle}
+                      >
+                        Nova Renda
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[
+                        styles.expenseModal,
+                        tipoSelecionado === 'despesa' && styles.expenseSelected,
+                      ]}
+                      onPress={() => setTipoSelecionado('despesa')}
+                    >
+                      <FontAwesome5 name="arrow-down" size={24} color="#EF4444" />
+
+                      <Text
+                        numberOfLines={2}
+                        adjustsFontSizeToFit
+                        style={styles.modalButtonTitle}
+                      >
+                        Nova Despesa
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {tipoSelecionado && (
+                    <View style={styles.formBox}>
+                      <Text style={styles.formTitle}>
+                        {tipoSelecionado === 'receita'
+                          ? 'Adicionar nova renda'
+                          : 'Adicionar nova despesa'}
+                      </Text>
+
+                      <TextInput
+                        style={styles.input}
+                        placeholder={
+                          tipoSelecionado === 'receita'
+                            ? 'Nome da renda'
+                            : 'Nome da despesa'
+                        }
+                        placeholderTextColor="#6B85B1"
+                        value={nomeTransacao}
+                        onChangeText={setNomeTransacao}
+                      />
+
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Valor"
+                        placeholderTextColor="#6B85B1"
+                        keyboardType="numeric"
+                        value={valorTransacao}
+                        onChangeText={setValorTransacao}
+                      />
+
+                      <TextInput
+                        style={[styles.input, styles.inputDescricao]}
+                        placeholder="Descrição"
+                        placeholderTextColor="#6B85B1"
+                        value={descricaoTransacao}
+                        onChangeText={setDescricaoTransacao}
+                      />
+
+                      <TouchableOpacity
+                        style={styles.saveButton}
+                        onPress={salvarTransacao}
+                      >
+                        <Text style={styles.saveButtonText}>Salvar</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+
+                  <TouchableOpacity onPress={fecharModal}>
+                    <Text style={styles.closeText}>Fechar</Text>
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+            </KeyboardAvoidingView>
           </View>
-        )}
-      </ScrollView>
+        </Modal>
+
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F3F4F6' },
-  container: { flex: 1, backgroundColor: '#F3F4F6' },
-  content: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 24 },
+  container: {
+    flex: 1,
+    backgroundColor: '#07101F',
+  },
 
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22 },
-  pageTitle: { fontSize: 30, fontWeight: 'bold', color: '#1F2937' },
-  pageSubtitle: { marginTop: 6, fontSize: 16, color: '#9CA3AF' },
-  logoBox: { width: 80, height: 80, borderRadius: 22, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', elevation: 6 },
-  logo: { width: 52, height: 52 },
+  content: {
+    flex: 1,
+    paddingHorizontal: 22,
+    paddingTop: 10,
+  },
 
-  balanceCard: { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 22, marginBottom: 22 },
-  balanceLabel: { fontSize: 18, color: '#9CA3AF', marginBottom: 10 },
-  balanceValue: { fontSize: 36, fontWeight: 'bold' },
-  balanceSubtext: { marginTop: 8, fontSize: 14, color: '#9CA3AF' },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 35,
+    justifyContent: 'space-between',
+  },
 
-  actionsRow: { flexDirection: 'row', gap: 12, marginBottom: 22 },
-  actionButton: { flex: 1, paddingVertical: 18, borderRadius: 18, alignItems: 'center' },
-  incomeButton: { backgroundColor: '#22C55E' },
-  expenseButton: { backgroundColor: '#EF4444' },
-  actionText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 15 },
+  brandArea: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
 
-  summaryCard: { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 20, marginBottom: 22 },
-  summaryHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
-  cardTitle: { fontSize: 18, fontWeight: 'bold', color: '#1F2937' },
-  monthText: { color: '#9CA3AF', textTransform: 'capitalize' },
-  summaryBoxes: { flexDirection: 'row', gap: 10 },
-  smallCard: { flex: 1, backgroundColor: '#F9FAFB', borderRadius: 16, padding: 12 },
-  smallCardLabel: { fontSize: 14, color: '#6B7280' },
-  incomeValue: { fontSize: 16, fontWeight: 'bold', color: '#10B981' },
-  expenseValue: { fontSize: 16, fontWeight: 'bold', color: '#EF4444' },
-  incomeDescription: { fontSize: 11, color: '#9CA3AF', marginTop: 4 },
-  expenseDescription: { fontSize: 11, color: '#9CA3AF', marginTop: 4 },
-  economyLabel: { marginTop: 14, color: '#6B7280' },
-  progressBarBackground: { height: 10, backgroundColor: '#E5E7EB', borderRadius: 999, marginTop: 6 },
-  progressBarFill: { height: '100%', borderRadius: 999 },
-  savedText: { marginTop: 8, fontWeight: 'bold' },
-  economyText: { fontSize: 12, color: '#6B7280', marginTop: 2 },
+  logoContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 16,
+    backgroundColor: '#12326B',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
 
-  emptyButton: { marginTop: 16, backgroundColor: '#EFF6FF', borderRadius: 12, padding: 14, alignItems: 'center' },
-  emptyButtonText: { color: '#3B82F6', fontWeight: '600' },
+  logoImage: {
+    width: 38,
+    height: 38,
+  },
 
-  expensesCard: { backgroundColor: '#FFFFFF', padding: 20, borderRadius: 24, marginBottom: 20 },
-  expensesHeader: { flexDirection: 'row', justifyContent: 'space-between' },
-  expensesDescription: { fontSize: 13, color: '#9CA3AF', marginVertical: 10 },
+  logoText: {
+    color: '#FFFFFF',
+    fontSize: 28,
+    fontWeight: '800',
+    marginLeft: 14,
+  },
 
-  expenseItem: { marginTop: 12, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
-  noBorder: { borderBottomWidth: 0 },
-  expenseTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  expenseLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  expenseDot: { width: 10, height: 10, borderRadius: 5 },
-  expenseName: { fontWeight: 'bold', color: '#1F2937' },
-  expenseSubtext: { fontSize: 12, color: '#9CA3AF', marginTop: 2 },
-  expenseValueText: { fontSize: 13, color: '#6B7280' },
-  progressContainer: { marginTop: 6 },
-  progressBg: { height: 6, backgroundColor: '#E5E7EB', borderRadius: 999 },
-  progressFill: { height: '100%', borderRadius: 999 },
+  profileCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 30,
+    backgroundColor: '#1D3D8F',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 
-  transacaoItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  profileText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 16,
+  },
 
-  tipCard: { backgroundColor: '#FFFFFF', padding: 18, borderRadius: 20, marginBottom: 8 },
-  tipText: { color: '#6B7280', marginTop: 6, lineHeight: 20 },
+  helloText: {
+    color: '#6B85B1',
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 14,
+  },
+
+  balance: {
+    fontSize: 52,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+
+  balanceLabel: {
+    color: '#5C6F91',
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 30,
+    fontSize: 16,
+  },
+
+  cardsRow: {
+    flexDirection: 'row',
+    gap: 14,
+    marginBottom: 34,
+  },
+
+  card: {
+    flex: 1,
+    backgroundColor: '#0D1B33',
+    borderRadius: 18,
+    paddingVertical: 18,
+    paddingHorizontal: 16,
+  },
+
+  cardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+
+  dotGreen: {
+    width: 10,
+    height: 10,
+    borderRadius: 20,
+    backgroundColor: '#22C55E',
+    marginRight: 10,
+  },
+
+  dotRed: {
+    width: 10,
+    height: 10,
+    borderRadius: 20,
+    backgroundColor: '#EF4444',
+    marginRight: 10,
+  },
+
+  cardLabel: {
+    color: '#7F95BC',
+    fontSize: 15,
+  },
+
+  greenText: {
+    color: '#22C55E',
+    fontWeight: '800',
+    fontSize: 20,
+  },
+
+  redText: {
+    color: '#EF4444',
+    fontWeight: '800',
+    fontSize: 20,
+  },
+
+  transactionsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 18,
+  },
+
+  sectionTitle: {
+    color: '#6B85B1',
+    letterSpacing: 2,
+    fontSize: 14,
+  },
+
+  viewAll: {
+    color: '#3B82F6',
+    fontWeight: '700',
+    fontSize: 15,
+  },
+
+  emptyText: {
+    color: '#6B85B1',
+    textAlign: 'center',
+    marginTop: 20,
+  },
+
+  transactionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+
+  iconBox: {
+    width: 58,
+    height: 58,
+    borderRadius: 18,
+    backgroundColor: '#0D1B33',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+
+  transactionTitle: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+
+  transactionDate: {
+    color: '#61708B',
+    marginTop: 4,
+    fontSize: 15,
+  },
+
+  transactionValue: {
+    fontSize: 19,
+    fontWeight: '800',
+    maxWidth: 155,
+  },
+
+  historyTitle: {
+    color: '#FFFFFF',
+    fontSize: 28,
+    fontWeight: '800',
+    marginBottom: 30,
+  },
+
+  bottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: -22,
+    right: -22,
+    backgroundColor: '#081221',
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingVertical: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#0E1B32',
+  },
+
+  bottomButton: {
+    alignItems: 'center',
+    width: 90,
+  },
+
+  bottomText: {
+    marginTop: 6,
+    fontSize: 13,
+  },
+
+  addButton: {
+    width: 74,
+    height: 74,
+    borderRadius: 40,
+    backgroundColor: '#2563EB',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: -50,
+  },
+
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.55)',
+  },
+
+  keyboardView: {
+    width: '100%',
+  },
+
+  modalContent: {
+    backgroundColor: '#0B1426',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    padding: 24,
+    paddingBottom: 40,
+  },
+
+  modalLine: {
+    width: 60,
+    height: 5,
+    borderRadius: 10,
+    backgroundColor: '#32415E',
+    alignSelf: 'center',
+    marginBottom: 28,
+  },
+
+  modalTitle: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginBottom: 28,
+  },
+
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 14,
+  },
+
+  incomeModal: {
+    flex: 1,
+    backgroundColor: '#092417',
+    borderRadius: 22,
+    padding: 22,
+    alignItems: 'center',
+    minHeight: 160,
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#092417',
+  },
+
+  expenseModal: {
+    flex: 1,
+    backgroundColor: '#2A0D12',
+    borderRadius: 22,
+    padding: 22,
+    alignItems: 'center',
+    minHeight: 160,
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#2A0D12',
+  },
+
+  incomeSelected: {
+    borderColor: '#22C55E',
+  },
+
+  expenseSelected: {
+    borderColor: '#EF4444',
+  },
+
+  modalButtonTitle: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 18,
+    marginTop: 16,
+    textAlign: 'center',
+    width: '100%',
+  },
+
+  formBox: {
+    marginTop: 24,
+  },
+
+  formTitle: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '800',
+    marginBottom: 14,
+    textAlign: 'center',
+  },
+
+  input: {
+    backgroundColor: '#081221',
+    borderRadius: 16,
+    padding: 16,
+    color: '#FFFFFF',
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#13213A',
+    fontSize: 16,
+  },
+
+  inputDescricao: {
+    minHeight: 54,
+  },
+
+  saveButton: {
+    backgroundColor: '#2563EB',
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    marginTop: 6,
+  },
+
+  saveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '800',
+  },
+
+  closeText: {
+    color: '#3B82F6',
+    textAlign: 'center',
+    marginTop: 26,
+    fontSize: 16,
+    fontWeight: '700',
+  },
 });

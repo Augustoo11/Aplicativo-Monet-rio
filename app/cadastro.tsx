@@ -13,13 +13,18 @@ import {
   StatusBar,
   StyleSheet
 } from 'react-native';
+
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { estilosLogin } from '../src/styles/_estilosLogin'; 
-import { estilosGlobais } from '../src/componentes/estilosGlobais'; 
+
+import { estilosLogin } from '../src/styles/_estilosLogin';
+import { estilosGlobais } from '../src/componentes/estilosGlobais';
 
 export default function TelaCadastro() {
   const router = useRouter();
+
   const [nome, setNome] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [senha, setSenha] = useState<string>('');
@@ -27,27 +32,57 @@ export default function TelaCadastro() {
 
   useEffect(() => {
     StatusBar.setBarStyle('light-content');
+
     if (Platform.OS === 'android') {
       StatusBar.setBackgroundColor('transparent');
       StatusBar.setTranslucent(true);
     }
   }, []);
 
-  const realizarCadastro = () => {
+  const realizarCadastro = async () => {
     if (!nome || !email || !senha || !confirmarSenha) {
-      Alert.alert('Atenção', 'Por favor, preencha todos os campos.');
+      Alert.alert(
+        'Atenção',
+        'Por favor, preencha todos os campos.'
+      );
       return;
     }
+
     if (senha !== confirmarSenha) {
-      Alert.alert('Atenção', 'As senhas não coincidem.');
+      Alert.alert(
+        'Atenção',
+        'As senhas não coincidem.'
+      );
       return;
     }
+
     if (senha.length < 6) {
-      Alert.alert('Atenção', 'A senha deve ter pelo menos 6 caracteres.');
+      Alert.alert(
+        'Atenção',
+        'A senha deve ter pelo menos 6 caracteres.'
+      );
       return;
     }
-    Alert.alert('Sucesso', 'Conta criada com sucesso!');
-    router.replace('/(tabs)/home');
+
+    try {
+      await AsyncStorage.setItem(
+        '@usuario_nome',
+        nome.trim()
+      );
+
+      Alert.alert(
+        'Sucesso',
+        'Conta criada com sucesso!'
+      );
+
+      router.replace('/(tabs)/home');
+
+    } catch (error) {
+      Alert.alert(
+        'Erro',
+        'Não foi possível salvar os dados.'
+      );
+    }
   };
 
   return (
@@ -60,27 +95,50 @@ export default function TelaCadastro() {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.flex1Width100}
         >
-          <ScrollView 
+          <ScrollView
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            
-            <View style={[estilosLogin.cartaoLogin, styles.cardAjustado]}>
+
+            <View
+              style={[
+                estilosLogin.cartaoLogin,
+                styles.cardAjustado
+              ]}
+            >
+
               <View style={estilosLogin.iconeTopo}>
-                <Image 
-                  source={require('../src/assets/logo.png')} 
+                <Image
+                  source={require('../src/assets/logo.png')}
                   style={styles.logoInterna}
-                  resizeMode='contain' 
+                  resizeMode='contain'
                 />
               </View>
 
-              <Text style={[estilosGlobais.subtitulo, { marginTop: 45 }]}>
+              <Text
+                style={[
+                  estilosGlobais.subtitulo,
+                  { marginTop: 45 }
+                ]}
+              >
                 Crie sua conta financeira.
               </Text>
 
-              <View style={[estilosGlobais.grupoEntrada, { width: '100%' }]}>
-                <FontAwesome5 name="user" size={16} color="#9ca3af" style={estilosGlobais.iconeEspacamento} />
+              {/* NOME */}
+              <View
+                style={[
+                  estilosGlobais.grupoEntrada,
+                  { width: '100%' }
+                ]}
+              >
+                <FontAwesome5
+                  name="user"
+                  size={16}
+                  color="#9ca3af"
+                  style={estilosGlobais.iconeEspacamento}
+                />
+
                 <TextInput
                   style={estilosGlobais.campoTexto}
                   placeholder="Nome completo"
@@ -90,8 +148,20 @@ export default function TelaCadastro() {
                 />
               </View>
 
-              <View style={[estilosGlobais.grupoEntrada, { width: '100%' }]}>
-                <FontAwesome5 name="envelope" size={16} color="#9ca3af" style={estilosGlobais.iconeEspacamento} />
+              {/* EMAIL */}
+              <View
+                style={[
+                  estilosGlobais.grupoEntrada,
+                  { width: '100%' }
+                ]}
+              >
+                <FontAwesome5
+                  name="envelope"
+                  size={16}
+                  color="#9ca3af"
+                  style={estilosGlobais.iconeEspacamento}
+                />
+
                 <TextInput
                   style={estilosGlobais.campoTexto}
                   placeholder="E-mail"
@@ -103,8 +173,20 @@ export default function TelaCadastro() {
                 />
               </View>
 
-              <View style={[estilosGlobais.grupoEntrada, { width: '100%' }]}>
-                <FontAwesome5 name="lock" size={16} color="#9ca3af" style={estilosGlobais.iconeEspacamento} />
+              {/* SENHA */}
+              <View
+                style={[
+                  estilosGlobais.grupoEntrada,
+                  { width: '100%' }
+                ]}
+              >
+                <FontAwesome5
+                  name="lock"
+                  size={16}
+                  color="#9ca3af"
+                  style={estilosGlobais.iconeEspacamento}
+                />
+
                 <TextInput
                   style={estilosGlobais.campoTexto}
                   placeholder="Senha"
@@ -115,8 +197,20 @@ export default function TelaCadastro() {
                 />
               </View>
 
-              <View style={[estilosGlobais.grupoEntrada, { width: '100%' }]}>
-                <FontAwesome5 name="check-circle" size={16} color="#9ca3af" style={estilosGlobais.iconeEspacamento} />
+              {/* CONFIRMAR SENHA */}
+              <View
+                style={[
+                  estilosGlobais.grupoEntrada,
+                  { width: '100%' }
+                ]}
+              >
+                <FontAwesome5
+                  name="check-circle"
+                  size={16}
+                  color="#9ca3af"
+                  style={estilosGlobais.iconeEspacamento}
+                />
+
                 <TextInput
                   style={estilosGlobais.campoTexto}
                   placeholder="Confirmar Senha"
@@ -127,19 +221,31 @@ export default function TelaCadastro() {
                 />
               </View>
 
-              <TouchableOpacity 
-                style={[estilosGlobais.botaoPrimario, { width: '100%' }]} 
+              {/* BOTÃO */}
+              <TouchableOpacity
+                style={[
+                  estilosGlobais.botaoPrimario,
+                  { width: '100%' }
+                ]}
                 onPress={realizarCadastro}
               >
-                <Text style={estilosGlobais.textoBotaoPrimario}>Finalizar Cadastro</Text>
+                <Text style={estilosGlobais.textoBotaoPrimario}>
+                  Finalizar Cadastro
+                </Text>
               </TouchableOpacity>
 
-              <TouchableOpacity 
+              {/* LOGIN */}
+              <TouchableOpacity
                 style={styles.linkEntrar}
                 onPress={() => router.back()}
               >
-                <Text style={{ color: '#4b5563' }}>Já tem conta? </Text>
-                <Text style={estilosGlobais.textoLink}>Entrar</Text>
+                <Text style={{ color: '#4b5563' }}>
+                  Já tem conta?
+                </Text>
+
+                <Text style={estilosGlobais.textoLink}>
+                  {' '}Entrar
+                </Text>
               </TouchableOpacity>
 
             </View>
@@ -152,31 +258,35 @@ export default function TelaCadastro() {
 
 const styles = StyleSheet.create({
   flex1Width100: {
-    flex: 1, 
-    width: '100%'
+    flex: 1,
+    width: '100%',
   },
+
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 80, 
+    paddingTop: 80,
     paddingBottom: 40,
   },
+
   cardAjustado: {
     width: '90%',
     maxWidth: 360,
     alignItems: 'center',
-    marginTop: 0, 
+    marginTop: 0,
   },
+
   logoInterna: {
-    width: 210, 
+    width: 210,
     height: 210,
-    alignSelf: 'center', 
+    alignSelf: 'center',
   },
+
   linkEntrar: {
-    flexDirection: 'row', 
-    marginTop: 20, 
+    flexDirection: 'row',
+    marginTop: 20,
     marginBottom: 10,
-    justifyContent: 'center'
-  }
+    justifyContent: 'center',
+  },
 });
