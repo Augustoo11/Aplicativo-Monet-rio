@@ -11,6 +11,9 @@ import com.Projeto.GestorFin.repositories.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.util.HashMap;   // para criar o "bilhete de resposta" com os dados
+import java.util.Map;       // tipo do bilhete
+import java.util.Optional;  // já deve ter, mas confirme
 
 import java.util.List;
 import java.util.UUID;
@@ -129,4 +132,60 @@ public class UsuarioController {
         // 404 Not Found → não encontrou para deletar
         return ResponseEntity.notFound().build();
     }
+
+    // -------------------------------------------------------
+// POST /usuarios/login → Faz o login do usuário
+//
+// Recebe um JSON assim:
+// {
+//   "email": "joao@gmail.com",
+//   "senha": "123456"
+// }
+//
+// Retorna os dados do usuário se login correto,
+// ou erro 401 se email/senha estiverem errados.
+// -------------------------------------------------------
+@PostMapping("/login")
+public ResponseEntity<?> fazerLogin(@RequestBody Map<String, String> credenciais) {
+
+    // Pega o email e a senha que vieram do front-end
+    // Map<String, String> é como um dicionário: chave → valor
+    // credenciais.get("email") pega o valor da chave "email" no JSON
+    String email = credenciais.get("email");
+    String senha = credenciais.get("senha");
+
+    // Validação básica: os dois campos precisam estar preenchidos
+    if (email == null || senha == null) {
+        return ResponseEntity.badRequest().body("Informe email e senha.");
+    }
+
+    // Busca o usuário no banco pelo email
+    // findByEmail() retorna um Optional → pode ou não ter resultado
+    Optional<Usuario> usuarioEncontrado = usuarioRepository.findByEmail(email);
+
+    // Se não encontrou ninguém com esse email → acesso negado
+    // Usamos 401 = "não autorizado"
+    if (usuarioEncontrado.isEmpty()) {
+        return ResponseEntity.status(401).body("E-mail ou senha inválidos.");
+    }
+
+    // Pega o usuário do Optional (agora sabemos que existe)
+    Usuario usuario = usuarioEncontrado.get();
+
+    // Compara a senha que veio com a senha salva no banco
+    // .equals() compara o conteúdo das strings (não use == para texto!)
+    if (!usuario.getSenha().equals(senha)) {
+        return ResponseEntity.status(401).body("E-mail ou senha inválidos.");
+    }
+
+    // ✅ Email e senha corretos! Monta a resposta com os dados do usuário
+    // HashMap é como uma "caixinha" de chave→valor que vira JSON automaticamente
+    Map<String, String> resposta = new HashMap<>();
+    resposta.put("id",    usuario.getId().toString()); // UUID precisa virar texto
+    resposta.put("nome",  usuario.getNome());
+    resposta.put("email", usuario.getEmail());
+
+    // HTTP 200 = tudo certo, aqui estão os dados
+    return ResponseEntity.ok(resposta);
+}
 }
