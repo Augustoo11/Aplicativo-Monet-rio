@@ -22,7 +22,7 @@ import { useRouter } from 'expo-router';
 import { estilosLogin } from '../src/styles/_estilosLogin';
 import { estilosGlobais } from '../src/componentes/estilosGlobais';
 
-// ⚠️ Cole aqui a URL da aba PORTS do seu Codespace (porta 8080)
+// ⚠️ Cole aqui a URL da aba PORTS do eu Codespace (porta 8080)
 // Exemplo: 'https://SEU-USUARIO-8080.app.github.dev'
 const API_URL = 'https://effective-engine-wv94476wj6qh9jw4-8080.app.github.dev';
 

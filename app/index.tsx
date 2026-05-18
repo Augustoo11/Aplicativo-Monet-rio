@@ -21,7 +21,7 @@ import { estilosLogin } from '../src/styles/_estilosLogin';
 import { estilosGlobais } from '../src/componentes/estilosGlobais';
 
 // ⚠️ Cole aqui a URL da aba PORTS do seu Codespace (porta 8080)
-// Exemplo: 'https://SEU-USUARIO-8080.app.github.dev'
+// Exemplo: 'https://SEU-USUARIO-8080.pp.github.dev'
 const API_URL = 'https://effective-engine-wv94476wj6qh9jw4-8080.app.github.dev';
 
 export default function TelaDeLogin() {

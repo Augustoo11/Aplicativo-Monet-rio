@@ -148,7 +148,7 @@ public class UsuarioController {
 @PostMapping("/login")
 public ResponseEntity<?> fazerLogin(@RequestBody Map<String, String> credenciais) {
 
-    // Pega o email e a senha que vieram do front-end
+    // Pega o email e a senha que vieram do font-end
     // Map<String, String> é como um dicionário: chave → valor
     // credenciais.get("email") pega o valor da chave "email" no JSON
     String email = credenciais.get("email");
