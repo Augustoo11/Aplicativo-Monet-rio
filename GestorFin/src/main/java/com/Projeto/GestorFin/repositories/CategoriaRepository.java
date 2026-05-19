@@ -9,14 +9,14 @@ import com.Projeto.GestorFin.entities.Categoria;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import java.util.List;
-import java.util.UUID;
 
+// JpaRepository<Categoria, Long>:
+//   - Gerencia a tabela "categorias"
+//   - O ID é do tipo Long (número)
 @Repository
 public interface CategoriaRepository extends JpaRepository<Categoria, Long> {
 
-    // Busca todas as categorias de um usuário específico pelo ID do usuário.
-    // O Spring traduz isso para: SELECT * FROM categorias WHERE usuario_id = ?
-    // Note: usamos "usuario_Id" porque o campo na entity é "usuario" (objeto Usuario),
-    // e o ID dele é "id".
-    List<Categoria> findByUsuarioId(UUID usuarioId);
+    // Busca todas as categorias de um usuário pelo ID (String)
+    // SELECT * FROM categorias WHERE usuario_id = ?
+    List<Categoria> findByUsuarioId(String usuarioId);
 }

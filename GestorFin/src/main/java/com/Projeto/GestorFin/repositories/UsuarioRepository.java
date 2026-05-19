@@ -9,24 +9,18 @@ import com.Projeto.GestorFin.entities.Usuario;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import java.util.Optional;
-import java.util.UUID;
 
-// @Repository diz ao Spring: "Esta interface acessa o banco de dados"
-// JpaRepository<Usuario, UUID> significa:
-//   - Gerencia objetos do tipo "Usuario"
-//   - A chave primária (ID) é do tipo "UUID"
-// O Spring cria automaticamente os métodos: save(), findAll(), findById(), deleteById(), etc.
-// Você não precisa escrever nenhum SQL!
+// JpaRepository<Usuario, String> significa:
+//   - Gerencia a tabela "usuarios"
+//   - O ID é do tipo String
+// O Spring cria automaticamente: save(), findAll(), findById(), deleteById(), etc.
 @Repository
-public interface UsuarioRepository extends JpaRepository<Usuario, UUID> {
+public interface UsuarioRepository extends JpaRepository<Usuario, String> {
 
-    // Método personalizado: busca usuário pelo email.
-    // O Spring entende o nome "findByEmail" e cria a query SQL automaticamente:
-    // SELECT * FROM usuarios WHERE email = ?
-    // Optional<> significa: pode retornar um usuário OU pode não encontrar ninguém.
+    // Busca um usuário pelo email
+    // O Spring traduz isso para: SELECT * FROM usuarios WHERE email = ?
     Optional<Usuario> findByEmail(String email);
 
-    // Verifica se já existe um usuário com este email.
-    // Retorna true (existe) ou false (não existe).
+    // Verifica se já existe um usuário com esse email (retorna true ou false)
     boolean existsByEmail(String email);
 }

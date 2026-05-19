@@ -6,76 +6,73 @@
 package com.Projeto.GestorFin.entities;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import org.hibernate.annotations.JdbcTypeCode;   // ← NOVO
-import org.hibernate.type.SqlTypes;               // ← NOVO
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+// @Entity → diz ao Spring que esta classe representa uma tabela no banco
+// Analogia: é o "molde" da tabela usuarios
 @Entity
-@Table(name = "usuarios")
+@Table(name = "usuarios") // nome exato da tabela no banco
 public class Usuario {
 
+    // O ID agora é uma String simples (texto)
+    // UUID.randomUUID() gera um código único como: "550e8400-e29b-41d4-a716-446655440000"
+    // Fazemos isso manualmente no onCreate() abaixo — sem complicação!
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    @JdbcTypeCode(SqlTypes.VARCHAR)  // ← força salvar como texto no banco
-    @Column(columnDefinition = "VARCHAR(36)", updatable = false, nullable = false)
-    private UUID id;
+    @Column(name = "id", columnDefinition = "VARCHAR(36)", updatable = false, nullable = false)
+    private String id;
 
-    @NotBlank(message = "Nome é obrigatório")
-    @Column(nullable = false)
+    @Column(nullable = false) // não pode ser vazio no banco
     private String nome;
 
-    @Email(message = "E-mail inválido")
-    @NotBlank(message = "E-mail é obrigatório")
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, unique = true) // não pode repetir email
     private String email;
 
-    @NotBlank(message = "Senha é obrigatória")
     @Column(nullable = false)
     private String senha;
 
-    @Column(name = "data_cadastro", updatable = false)
+    @Column(name = "data_cadastro", updatable = false) // preenchido só na criação
     private LocalDateTime dataCadastro;
 
-    @Column(name = "updated_at")
+    @Column(name = "updated_at") // atualizado toda vez que o registro muda
     private LocalDateTime updatedAt;
 
+    // @PrePersist → executado automaticamente ANTES de salvar pela 1ª vez
+    // Aqui geramos o ID e as datas automaticamente
     @PrePersist
     protected void onCreate() {
-        this.dataCadastro = LocalDateTime.now();
+        this.id           = UUID.randomUUID().toString(); // gera ID único
+        this.dataCadastro = LocalDateTime.now();          // data de agora
         this.updatedAt    = LocalDateTime.now();
     }
 
+    // @PreUpdate → executado automaticamente ANTES de qualquer atualização
     @PreUpdate
     protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now(); // atualiza a data de modificação
     }
 
+    // Construtor vazio — obrigatório para o Spring funcionar!
     public Usuario() {}
 
-    public Usuario(String nome, String email, String senha) {
-        this.nome  = nome;
-        this.email = email;
-        this.senha = senha;
-    }
+    // -------------------------------------------------------
+    // Getters (pegar o valor) e Setters (definir o valor)
+    // -------------------------------------------------------
+    public String getId()                 { return id; }
+    public void setId(String id)          { this.id = id; }
 
-    public UUID getId()                           { return id; }
-    public void setId(UUID id)                    { this.id = id; }
+    public String getNome()               { return nome; }
+    public void setNome(String nome)      { this.nome = nome; }
 
-    public String getNome()                       { return nome; }
-    public void setNome(String nome)              { this.nome = nome; }
+    public String getEmail()              { return email; }
+    public void setEmail(String email)    { this.email = email; }
 
-    public String getEmail()                      { return email; }
-    public void setEmail(String email)            { this.email = email; }
+    public String getSenha()              { return senha; }
+    public void setSenha(String senha)    { this.senha = senha; }
 
-    public String getSenha()                      { return senha; }
-    public void setSenha(String senha)            { this.senha = senha; }
+    public LocalDateTime getDataCadastro()               { return dataCadastro; }
+    public void setDataCadastro(LocalDateTime v)         { this.dataCadastro = v; }
 
-    public LocalDateTime getDataCadastro()        { return dataCadastro; }
-    public void setDataCadastro(LocalDateTime v)  { this.dataCadastro = v; }
-
-    public LocalDateTime getUpdatedAt()           { return updatedAt; }
-    public void setUpdatedAt(LocalDateTime v)     { this.updatedAt = v; }
+    public LocalDateTime getUpdatedAt()                  { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime v)            { this.updatedAt = v; }
 }

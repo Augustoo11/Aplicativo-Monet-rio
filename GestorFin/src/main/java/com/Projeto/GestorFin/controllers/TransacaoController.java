@@ -14,7 +14,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/transacoes")
@@ -31,31 +30,30 @@ public class TransacaoController {
 
     // -------------------------------------------------------
     // POST /transacoes → Cria uma nova transação
-    //
-    // JSON de entrada esperado:
+    // JSON esperado:
     // {
-    //   "usuario":   { "id": "uuid-do-usuario" },
+    //   "usuario":   { "id": "id-do-usuario" },
     //   "categoria": { "id": 1 },
     //   "tipo":      "despesa",
     //   "valor":     150.00,
-    //   "descricao": "Almoço no restaurante",
+    //   "descricao": "Almoço",
     //   "data":      "2025-05-10"
     // }
     // -------------------------------------------------------
     @PostMapping
     public ResponseEntity<String> criarTransacao(@RequestBody Transacao transacao) {
 
-        // Validação: usuário é obrigatório
+        // Usuário é obrigatório
         if (transacao.getUsuario() == null || transacao.getUsuario().getId() == null) {
             return ResponseEntity.badRequest().body("Erro: informe o id do usuário.");
         }
 
-        // Validação: categoria é obrigatória
+        // Categoria é obrigatória
         if (transacao.getCategoria() == null || transacao.getCategoria().getId() == null) {
             return ResponseEntity.badRequest().body("Erro: informe o id da categoria.");
         }
 
-        // Validação: tipo deve ser 'receita' ou 'despesa'
+        // Tipo deve ser "receita" ou "despesa"
         String tipo = transacao.getTipo();
         if (tipo == null || (!tipo.equals("receita") && !tipo.equals("despesa"))) {
             return ResponseEntity.badRequest().body("Erro: tipo deve ser 'receita' ou 'despesa'.");
@@ -87,32 +85,29 @@ public class TransacaoController {
     // GET /transacoes/usuario/{usuarioId} → Lista transações de um usuário
     // -------------------------------------------------------
     @GetMapping("/usuario/{usuarioId}")
-    public ResponseEntity<List<Transacao>> listarPorUsuario(@PathVariable UUID usuarioId) {
+    public ResponseEntity<List<Transacao>> listarPorUsuario(@PathVariable String usuarioId) {
 
         if (!usuarioRepository.existsById(usuarioId)) {
             return ResponseEntity.notFound().build();
         }
 
-        List<Transacao> transacoes = transacaoRepository.findByUsuarioId(usuarioId);
-        return ResponseEntity.ok(transacoes);
+        return ResponseEntity.ok(transacaoRepository.findByUsuarioId(usuarioId));
     }
 
     // -------------------------------------------------------
     // GET /transacoes/usuario/{usuarioId}/tipo/{tipo}
-    // Lista transações de um usuário filtradas por tipo
-    // Ex: GET /transacoes/usuario/uuid-aqui/tipo/despesa
+    // Filtra transações por tipo: "receita" ou "despesa"
     // -------------------------------------------------------
     @GetMapping("/usuario/{usuarioId}/tipo/{tipo}")
-    public ResponseEntity<List<Transacao>> listarPorUsuarioETipo(
-            @PathVariable UUID usuarioId,
+    public ResponseEntity<List<Transacao>> listarPorTipo(
+            @PathVariable String usuarioId,
             @PathVariable String tipo) {
 
         if (!usuarioRepository.existsById(usuarioId)) {
             return ResponseEntity.notFound().build();
         }
 
-        List<Transacao> transacoes = transacaoRepository.findByUsuarioIdAndTipo(usuarioId, tipo);
-        return ResponseEntity.ok(transacoes);
+        return ResponseEntity.ok(transacaoRepository.findByUsuarioIdAndTipo(usuarioId, tipo));
     }
 
     // -------------------------------------------------------
@@ -129,20 +124,16 @@ public class TransacaoController {
     // PUT /transacoes/{id} → Atualiza uma transação
     // -------------------------------------------------------
     @PutMapping("/{id}")
-    public ResponseEntity<String> atualizarTransacao(@PathVariable Long id, @RequestBody Transacao transacaoAtualizada) {
-
+    public ResponseEntity<String> atualizarTransacao(@PathVariable Long id, @RequestBody Transacao atualizada) {
         return transacaoRepository.findById(id)
                 .map(transacao -> {
-                    transacao.setTipo(transacaoAtualizada.getTipo());
-                    transacao.setValor(transacaoAtualizada.getValor());
-                    transacao.setDescricao(transacaoAtualizada.getDescricao());
-                    transacao.setData(transacaoAtualizada.getData());
-
-                    // Atualiza categoria se foi informada
-                    if (transacaoAtualizada.getCategoria() != null) {
-                        transacao.setCategoria(transacaoAtualizada.getCategoria());
+                    transacao.setTipo(atualizada.getTipo());
+                    transacao.setValor(atualizada.getValor());
+                    transacao.setDescricao(atualizada.getDescricao());
+                    transacao.setData(atualizada.getData());
+                    if (atualizada.getCategoria() != null) {
+                        transacao.setCategoria(atualizada.getCategoria());
                     }
-
                     transacaoRepository.save(transacao);
                     return ResponseEntity.ok("Transação atualizada com sucesso!");
                 })
