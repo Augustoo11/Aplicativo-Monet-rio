@@ -22,9 +22,8 @@ import { useRouter } from 'expo-router';
 import { estilosLogin } from '../src/styles/_estilosLogin';
 import { estilosGlobais } from '../src/componentes/estilosGlobais';
 
-// ⚠️ Cole aqui a URL da aba PORTS do eu Codespace (porta 8080)
-// Exemplo: 'https://SEU-USUARIO-8080.app.github.dev'
-const API_URL = 'https://effective-engine-wv94476wj6qh9jw4-8080.app.github.dev';
+// ⚠️ URL do seu Codespace — porta 8080
+const API_URL = 'https://literate-lamp-77rxx9qg4qx2pr5x-8080.app.github.dev';
 
 export default function TelaCadastro() {
   const router = useRouter();
@@ -62,7 +61,8 @@ export default function TelaCadastro() {
     setCarregando(true);
 
     try {
-      const resposta = await fetch(`${API_URL}/usuarios/cadastro`, {
+      // PASSO 1 — Cria o usuário no banco (POST /usuarios)
+      const respostaCadastro = await fetch(`${API_URL}/usuarios`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -72,29 +72,37 @@ export default function TelaCadastro() {
         }),
       });
 
-      const dados = await resposta.json();
-
-      if (resposta.status === 409) {
-        Alert.alert('Atenção', dados.mensagem || 'E-mail já cadastrado. Tente fazer login.');
+      // E-mail já cadastrado
+      if (respostaCadastro.status === 409) {
+        Alert.alert('Atenção', 'E-mail já cadastrado. Tente fazer login.');
         return;
       }
 
-      if (resposta.status === 400) {
-        const primeiroErro = Object.values(dados.erros || {})[0] as string;
-        Alert.alert('Atenção', primeiroErro || 'Dados inválidos.');
-        return;
-      }
-
-      if (!resposta.ok) {
+      if (!respostaCadastro.ok) {
         Alert.alert('Erro', 'Não foi possível criar a conta. Tente novamente.');
         return;
       }
 
-      // ✅ Salva os dados do usuário localmente
-      await AsyncStorage.setItem('@usuario_id', dados.id);
-      await AsyncStorage.setItem('@usuario_nome', dados.nome);
-      await AsyncStorage.setItem('@usuario_email', dados.email);
+      // PASSO 2 — Faz login automático para pegar o ID do usuário
+      const respostaLogin = await fetch(`${API_URL}/usuarios/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.toLowerCase().trim(),
+          senha,
+        }),
+      });
 
+      if (respostaLogin.ok) {
+        const dados = await respostaLogin.json();
+
+        // Salva os dados do usuário localmente
+        await AsyncStorage.setItem('@usuario_id', dados.id);
+        await AsyncStorage.setItem('@usuario_nome', dados.nome);
+        await AsyncStorage.setItem('@usuario_email', dados.email);
+      }
+
+      // ✅ Cadastro feito — vai para a home
       Alert.alert('Sucesso!', 'Conta criada com sucesso!', [
         { text: 'OK', onPress: () => router.replace('/(tabs)/home') },
       ]);
