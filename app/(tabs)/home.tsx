@@ -1,51 +1,42 @@
-import React, { useMemo, useState, useEffect } from 'react';
-
+import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Modal,
-  TextInput,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  Image,
+  View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal,
+  TextInput, Alert, KeyboardAvoidingView, Platform, Image
 } from 'react-native';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FontAwesome5, Ionicons } from '@expo/vector-icons';
-
 import { useTransacoesStore } from '../../src/store/src/store/useTransacoesStore';
 
 export default function Home() {
-  const {
-    totalReceitas,
-    totalDespesas,
-    saldo,
-    transacoes,
-    adicionarTransacao,
-  } = useTransacoesStore();
+  const { totalReceitas, totalDespesas, saldo, transacoes, adicionarTransacao } =
+    useTransacoesStore();
 
-  const [abaAtiva, setAbaAtiva] = useState<'inicio' | 'historico'>('inicio');
+  const [abaAtiva, setAbaAtiva] = useState<'inicio' | 'metas'>('inicio');
   const [modalVisible, setModalVisible] = useState(false);
+  const [modalMeta, setModalMeta] = useState(false);
   const [nomeUsuario, setNomeUsuario] = useState('Usuário');
 
-  const [tipoSelecionado, setTipoSelecionado] = useState<'receita' | 'despesa' | null>(null);
+  const [tipoSelecionado, setTipoSelecionado] =
+    useState<'receita' | 'despesa' | null>(null);
+
   const [nomeTransacao, setNomeTransacao] = useState('');
   const [valorTransacao, setValorTransacao] = useState('');
   const [descricaoTransacao, setDescricaoTransacao] = useState('');
 
-  useEffect(() => {
-    const carregarNome = async () => {
-      const nomeSalvo = await AsyncStorage.getItem('@usuario_nome');
+  const [metaNome, setMetaNome] = useState('');
+  const [metaValor, setMetaValor] = useState('');
+  const [metas, setMetas] = useState<any[]>([]);
+  const [filtro, setFiltro] = useState<'todos' | 'receita' | 'despesa'>('todos');
 
-      if (nomeSalvo) {
-        setNomeUsuario(nomeSalvo);
-      }
-    };
+  const sugestoes = ['Notebook', 'Viagem', 'Curso', 'Celular', 'Reserva'];
+
+  useEffect(() => {
+    async function carregarNome() {
+      const nome = await AsyncStorage.getItem('@usuario_nome');
+      if (nome) setNomeUsuario(nome);
+    }
 
     carregarNome();
   }, []);
@@ -54,23 +45,16 @@ export default function Home() {
   const despesas = totalDespesas();
   const saldoAtual = saldo();
 
-  const ultimasTransacoes = useMemo(() => {
-    return [...transacoes].sort((a, b) => b.data.getTime() - a.data.getTime());
-  }, [transacoes]);
+  const lista = [...transacoes].sort(
+    (a, b) => b.data.getTime() - a.data.getTime()
+  );
 
-  const formatarMoeda = (valor: number) => {
-    return valor.toLocaleString('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    });
-  };
-
-  const mesAtual = new Date().toLocaleString('pt-BR', {
-    month: 'long',
-    year: 'numeric',
+  const listaFiltrada = lista.filter((item) => {
+    if (filtro === 'todos') return true;
+    return item.tipo === filtro;
   });
 
-  const mesFormatado = mesAtual.charAt(0).toUpperCase() + mesAtual.slice(1);
+  const primeiroNome = nomeUsuario.split(' ')[0];
 
   const iniciaisUsuario = nomeUsuario
     .split(' ')
@@ -79,7 +63,29 @@ export default function Home() {
     .map((nome) => nome[0].toUpperCase())
     .join('');
 
-  const salvarTransacao = () => {
+  const mes = new Date().toLocaleString('pt-BR', {
+    month: 'long',
+    year: 'numeric',
+  });
+
+  const mesFormatado = mes.charAt(0).toUpperCase() + mes.slice(1);
+
+  function formatarMoeda(valor: number) {
+    return valor.toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    });
+  }
+
+  function limparFormulario() {
+    setNomeTransacao('');
+    setValorTransacao('');
+    setDescricaoTransacao('');
+    setTipoSelecionado(null);
+    setModalVisible(false);
+  }
+
+  function salvarTransacao() {
     if (!tipoSelecionado || !nomeTransacao || !valorTransacao) {
       Alert.alert('Atenção', 'Preencha o nome e o valor.');
       return;
@@ -95,29 +101,167 @@ export default function Home() {
     adicionarTransacao({
       tipo: tipoSelecionado,
       valor: valorNumerico,
-      valorFormatado: valorNumerico.toLocaleString('pt-BR', {
-        style: 'currency',
-        currency: 'BRL',
-      }),
+      valorFormatado: formatarMoeda(valorNumerico),
       categoriaId: nomeTransacao.toLowerCase().replace(/\s/g, '-'),
       categoriaLabel: nomeTransacao,
-      emoji: tipoSelecionado === 'receita' ? '💰' : '🧾',
+      emoji: tipoSelecionado,
     });
 
-    setNomeTransacao('');
-    setValorTransacao('');
-    setDescricaoTransacao('');
-    setTipoSelecionado(null);
-    setModalVisible(false);
-  };
+    limparFormulario();
+  }
 
-  const fecharModal = () => {
-    setModalVisible(false);
-    setTipoSelecionado(null);
-    setNomeTransacao('');
-    setValorTransacao('');
-    setDescricaoTransacao('');
-  };
+  function salvarMeta() {
+    if (!metaNome || !metaValor) {
+      Alert.alert('Atenção', 'Preencha o nome e o valor da meta.');
+      return;
+    }
+
+    const valor = Number(metaValor.replace(',', '.'));
+
+    if (isNaN(valor) || valor <= 0) {
+      Alert.alert('Atenção', 'Digite um valor válido.');
+      return;
+    }
+
+    const novaMeta = {
+      id: Date.now(),
+      nome: metaNome,
+      valor,
+    };
+
+    setMetas([...metas, novaMeta]);
+    setMetaNome('');
+    setMetaValor('');
+    setModalMeta(false);
+  }
+
+  function excluirMeta(id: number) {
+    setMetas(metas.filter((item) => item.id !== id));
+  }
+
+  function BotaoFiltro({ nome, valor }: any) {
+    return (
+      <TouchableOpacity
+        style={[
+          styles.filterButton,
+          filtro === valor && styles.filterSelected,
+        ]}
+        onPress={() => setFiltro(valor)}
+      >
+        <Text
+          style={[
+            styles.filterText,
+            filtro === valor && styles.filterTextSelected,
+          ]}
+        >
+          {nome}
+        </Text>
+      </TouchableOpacity>
+    );
+  }
+
+  function mostrarTransacao(item: any) {
+    const receita = item.tipo === 'receita';
+
+    return (
+      <View style={styles.transactionItem} key={item.id}>
+        <View style={styles.iconBox}>
+          <Ionicons
+            name={receita ? 'wallet-outline' : 'arrow-down-outline'}
+            size={20}
+            color={receita ? '#22C55E' : '#EF4444'}
+          />
+        </View>
+
+        <View style={{ flex: 1 }}>
+          <Text style={styles.transactionTitle}>{item.categoriaLabel}</Text>
+          <Text style={styles.transactionDate}>
+            {item.data.toLocaleDateString('pt-BR')}
+          </Text>
+        </View>
+
+        <Text
+          style={[
+            styles.transactionValue,
+            { color: receita ? '#22C55E' : '#EF4444' },
+          ]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+        >
+          {receita ? '+' : '-'}
+          {item.valorFormatado}
+        </Text>
+      </View>
+    );
+  }
+
+  function mostrarMeta(item: any) {
+    const porcentagem =
+      saldoAtual <= 0
+        ? 0
+        : Math.min((saldoAtual / item.valor) * 100, 100);
+
+    const falta = item.valor - saldoAtual;
+    const metaFeita = porcentagem >= 100;
+
+    return (
+      <View style={styles.metaCard} key={item.id}>
+        <View style={styles.metaTop}>
+          <View>
+            <Text style={styles.transactionTitle}>{item.nome}</Text>
+
+            <Text
+              style={[
+                styles.metaStatus,
+                { color: metaFeita ? '#22C55E' : '#FACC15' },
+              ]}
+            >
+              {metaFeita ? 'Meta alcançada' : 'Em andamento'}
+            </Text>
+          </View>
+
+          <TouchableOpacity onPress={() => excluirMeta(item.id)}>
+            <Ionicons name="trash-outline" size={22} color="#EF4444" />
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.transactionDate}>
+          Objetivo: {formatarMoeda(item.valor)}
+        </Text>
+
+        <Text style={styles.transactionDate}>
+          Saldo atual: {formatarMoeda(saldoAtual)}
+        </Text>
+
+        {!metaFeita && (
+          <Text style={styles.transactionDate}>
+            Falta: {formatarMoeda(falta)}
+          </Text>
+        )}
+
+        <View style={styles.progressBack}>
+          <View
+            style={[
+              styles.progressFront,
+              { width: `${porcentagem}%` },
+            ]}
+          />
+        </View>
+
+        <Text style={[styles.transactionDate, { marginTop: 10 }]}>
+          {porcentagem.toFixed(0)}% concluído
+        </Text>
+
+        {metaFeita && (
+          <View style={styles.metaConcluida}>
+            <Text style={styles.metaConcluidaTexto}>
+              Meta alcançada. Você atingiu esse objetivo.
+            </Text>
+          </View>
+        )}
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -148,7 +292,7 @@ export default function Home() {
           {abaAtiva === 'inicio' ? (
             <>
               <Text style={styles.helloText}>
-                Olá, {nomeUsuario.split(' ')[0]} · {mesFormatado}
+                Olá, {primeiroNome} · {mesFormatado}
               </Text>
 
               <Text
@@ -171,11 +315,7 @@ export default function Home() {
                     <Text style={styles.cardLabel}>Renda</Text>
                   </View>
 
-                  <Text
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                    style={styles.greenText}
-                  >
+                  <Text numberOfLines={1} adjustsFontSizeToFit style={styles.greenText}>
                     {formatarMoeda(receitas)}
                   </Text>
                 </View>
@@ -186,11 +326,7 @@ export default function Home() {
                     <Text style={styles.cardLabel}>Despesas</Text>
                   </View>
 
-                  <Text
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                    style={styles.redText}
-                  >
+                  <Text numberOfLines={1} adjustsFontSizeToFit style={styles.redText}>
                     {formatarMoeda(despesas)}
                   </Text>
                 </View>
@@ -198,99 +334,52 @@ export default function Home() {
 
               <View style={styles.transactionsHeader}>
                 <Text style={styles.sectionTitle}>TRANSAÇÕES</Text>
-
-                <TouchableOpacity onPress={() => setAbaAtiva('historico')}>
-                  <Text style={styles.viewAll}>Ver tudo</Text>
-                </TouchableOpacity>
               </View>
 
-              {ultimasTransacoes.length === 0 && (
+              <View style={styles.filterArea}>
+                <BotaoFiltro nome="Todos" valor="todos" />
+                <BotaoFiltro nome="Receitas" valor="receita" />
+                <BotaoFiltro nome="Despesas" valor="despesa" />
+              </View>
+
+              {listaFiltrada.length === 0 && (
                 <Text style={styles.emptyText}>
-                  Nenhuma transação adicionada ainda.
+                  Nenhuma transação encontrada.
                 </Text>
               )}
 
-              {ultimasTransacoes.slice(0, 5).map((item) => (
-                <View style={styles.transactionItem} key={item.id}>
-                  <View style={styles.iconBox}>
-                    <Ionicons
-                      name={item.tipo === 'receita' ? 'wallet-outline' : 'arrow-down-outline'}
-                      size={20}
-                      color={item.tipo === 'receita' ? '#22C55E' : '#EF4444'}
-                    />
-                  </View>
-
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.transactionTitle}>
-                      {item.categoriaLabel}
-                    </Text>
-
-                    <Text style={styles.transactionDate}>
-                      {item.data.toLocaleDateString('pt-BR')}
-                    </Text>
-                  </View>
-
-                  <Text
-                    style={[
-                      styles.transactionValue,
-                      {
-                        color: item.tipo === 'receita' ? '#22C55E' : '#EF4444',
-                      },
-                    ]}
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                  >
-                    {item.tipo === 'receita' ? '+' : '-'}
-                    {item.valorFormatado}
-                  </Text>
-                </View>
-              ))}
+              {listaFiltrada.slice(0, 5).map(mostrarTransacao)}
             </>
           ) : (
             <>
-              <Text style={styles.historyTitle}>Histórico completo</Text>
+              <View style={styles.transactionsHeader}>
+                <Text style={styles.historyTitle}>Metas</Text>
 
-              {ultimasTransacoes.length === 0 && (
-                <Text style={styles.emptyText}>
-                  Nenhuma transação no histórico.
-                </Text>
+                <TouchableOpacity onPress={() => setModalMeta(true)}>
+                  <Text style={styles.viewAll}>Nova meta</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.phrase}>
+                Acompanhe suas metas usando o saldo atual do aplicativo.
+              </Text>
+
+              {metas.length === 0 && (
+                <View style={styles.emptyMetaBox}>
+                  <Text style={styles.emptyText}>
+                    Nenhuma meta criada ainda.
+                  </Text>
+
+                  <TouchableOpacity
+                    style={styles.firstMetaButton}
+                    onPress={() => setModalMeta(true)}
+                  >
+                    <Text style={styles.saveButtonText}>Criar primeira meta</Text>
+                  </TouchableOpacity>
+                </View>
               )}
 
-              {ultimasTransacoes.map((item) => (
-                <View style={styles.transactionItem} key={item.id}>
-                  <View style={styles.iconBox}>
-                    <Ionicons
-                      name={item.tipo === 'receita' ? 'wallet-outline' : 'arrow-down-outline'}
-                      size={20}
-                      color={item.tipo === 'receita' ? '#22C55E' : '#EF4444'}
-                    />
-                  </View>
-
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.transactionTitle}>
-                      {item.categoriaLabel}
-                    </Text>
-
-                    <Text style={styles.transactionDate}>
-                      {item.data.toLocaleDateString('pt-BR')}
-                    </Text>
-                  </View>
-
-                  <Text
-                    style={[
-                      styles.transactionValue,
-                      {
-                        color: item.tipo === 'receita' ? '#22C55E' : '#EF4444',
-                      },
-                    ]}
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                  >
-                    {item.tipo === 'receita' ? '+' : '-'}
-                    {item.valorFormatado}
-                  </Text>
-                </View>
-              ))}
+              {metas.map(mostrarMeta)}
             </>
           )}
         </ScrollView>
@@ -325,24 +414,80 @@ export default function Home() {
 
           <TouchableOpacity
             style={styles.bottomButton}
-            onPress={() => setAbaAtiva('historico')}
+            onPress={() => setAbaAtiva('metas')}
           >
             <Ionicons
-              name="time-outline"
+              name="flag-outline"
               size={22}
-              color={abaAtiva === 'historico' ? '#3B82F6' : '#5C6F91'}
+              color={abaAtiva === 'metas' ? '#3B82F6' : '#5C6F91'}
             />
 
             <Text
               style={[
                 styles.bottomText,
-                { color: abaAtiva === 'historico' ? '#3B82F6' : '#5C6F91' },
+                { color: abaAtiva === 'metas' ? '#3B82F6' : '#5C6F91' },
               ]}
             >
-              Histórico
+              Metas
             </Text>
           </TouchableOpacity>
         </View>
+
+        <Modal visible={modalMeta} transparent animationType="slide">
+          <View style={styles.modalOverlay}>
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              style={styles.keyboardView}
+            >
+              <ScrollView keyboardShouldPersistTaps="handled">
+                <View style={styles.modalContent}>
+                  <View style={styles.modalLine} />
+
+                  <Text style={styles.modalTitle}>Nova Meta</Text>
+
+                  <Text style={styles.formTitle}>Sugestões</Text>
+
+                  <View style={styles.sugestoesArea}>
+                    {sugestoes.map((item) => (
+                      <TouchableOpacity
+                        key={item}
+                        style={styles.sugestaoButton}
+                        onPress={() => setMetaNome(item)}
+                      >
+                        <Text style={styles.sugestaoText}>{item}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Nome da meta"
+                    placeholderTextColor="#6B85B1"
+                    value={metaNome}
+                    onChangeText={setMetaNome}
+                  />
+
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Valor da meta"
+                    placeholderTextColor="#6B85B1"
+                    keyboardType="numeric"
+                    value={metaValor}
+                    onChangeText={setMetaValor}
+                  />
+
+                  <TouchableOpacity style={styles.saveButton} onPress={salvarMeta}>
+                    <Text style={styles.saveButtonText}>Salvar Meta</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity onPress={() => setModalMeta(false)}>
+                    <Text style={styles.closeText}>Fechar</Text>
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+            </KeyboardAvoidingView>
+          </View>
+        </Modal>
 
         <Modal visible={modalVisible} transparent animationType="slide">
           <View style={styles.modalOverlay}>
@@ -350,16 +495,11 @@ export default function Home() {
               behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
               style={styles.keyboardView}
             >
-              <ScrollView
-                keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={false}
-              >
+              <ScrollView keyboardShouldPersistTaps="handled">
                 <View style={styles.modalContent}>
                   <View style={styles.modalLine} />
 
-                  <Text style={styles.modalTitle}>
-                    O que deseja registrar?
-                  </Text>
+                  <Text style={styles.modalTitle}>O que deseja registrar?</Text>
 
                   <View style={styles.modalButtons}>
                     <TouchableOpacity
@@ -370,14 +510,7 @@ export default function Home() {
                       onPress={() => setTipoSelecionado('receita')}
                     >
                       <FontAwesome5 name="arrow-up" size={24} color="#22C55E" />
-
-                      <Text
-                        numberOfLines={2}
-                        adjustsFontSizeToFit
-                        style={styles.modalButtonTitle}
-                      >
-                        Nova Renda
-                      </Text>
+                      <Text style={styles.modalButtonTitle}>Nova Renda</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -388,14 +521,7 @@ export default function Home() {
                       onPress={() => setTipoSelecionado('despesa')}
                     >
                       <FontAwesome5 name="arrow-down" size={24} color="#EF4444" />
-
-                      <Text
-                        numberOfLines={2}
-                        adjustsFontSizeToFit
-                        style={styles.modalButtonTitle}
-                      >
-                        Nova Despesa
-                      </Text>
+                      <Text style={styles.modalButtonTitle}>Nova Despesa</Text>
                     </TouchableOpacity>
                   </View>
 
@@ -436,16 +562,13 @@ export default function Home() {
                         onChangeText={setDescricaoTransacao}
                       />
 
-                      <TouchableOpacity
-                        style={styles.saveButton}
-                        onPress={salvarTransacao}
-                      >
+                      <TouchableOpacity style={styles.saveButton} onPress={salvarTransacao}>
                         <Text style={styles.saveButtonText}>Salvar</Text>
                       </TouchableOpacity>
                     </View>
                   )}
 
-                  <TouchableOpacity onPress={fecharModal}>
+                  <TouchableOpacity onPress={limparFormulario}>
                     <Text style={styles.closeText}>Fechar</Text>
                   </TouchableOpacity>
                 </View>
@@ -460,16 +583,8 @@ export default function Home() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#07101F',
-  },
-
-  content: {
-    flex: 1,
-    paddingHorizontal: 22,
-    paddingTop: 10,
-  },
+  container: { flex: 1, backgroundColor: '#07101F' },
+  content: { flex: 1, paddingHorizontal: 22, paddingTop: 10 },
 
   header: {
     flexDirection: 'row',
@@ -494,10 +609,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
 
-  logoImage: {
-    width: 38,
-    height: 38,
-  },
+  logoImage: { width: 38, height: 38 },
 
   logoText: {
     color: '#FFFFFF',
@@ -578,22 +690,9 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
 
-  cardLabel: {
-    color: '#7F95BC',
-    fontSize: 15,
-  },
-
-  greenText: {
-    color: '#22C55E',
-    fontWeight: '800',
-    fontSize: 20,
-  },
-
-  redText: {
-    color: '#EF4444',
-    fontWeight: '800',
-    fontSize: 20,
-  },
+  cardLabel: { color: '#7F95BC', fontSize: 15 },
+  greenText: { color: '#22C55E', fontWeight: '800', fontSize: 20 },
+  redText: { color: '#EF4444', fontWeight: '800', fontSize: 20 },
 
   transactionsHeader: {
     flexDirection: 'row',
@@ -601,22 +700,34 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
 
-  sectionTitle: {
-    color: '#6B85B1',
-    letterSpacing: 2,
-    fontSize: 14,
+  sectionTitle: { color: '#6B85B1', letterSpacing: 2, fontSize: 14 },
+  viewAll: { color: '#3B82F6', fontWeight: '700', fontSize: 15 },
+  emptyText: { color: '#6B85B1', textAlign: 'center', marginTop: 20 },
+
+  filterArea: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 20,
   },
 
-  viewAll: {
-    color: '#3B82F6',
+  filterButton: {
+    backgroundColor: '#0D1B33',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+  },
+
+  filterSelected: {
+    backgroundColor: '#2563EB',
+  },
+
+  filterText: {
+    color: '#6B85B1',
     fontWeight: '700',
-    fontSize: 15,
   },
 
-  emptyText: {
-    color: '#6B85B1',
-    textAlign: 'center',
-    marginTop: 20,
+  filterTextSelected: {
+    color: '#FFFFFF',
   },
 
   transactionItem: {
@@ -635,17 +746,8 @@ const styles = StyleSheet.create({
     marginRight: 14,
   },
 
-  transactionTitle: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-
-  transactionDate: {
-    color: '#61708B',
-    marginTop: 4,
-    fontSize: 15,
-  },
+  transactionTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: '700' },
+  transactionDate: { color: '#61708B', marginTop: 4, fontSize: 15 },
 
   transactionValue: {
     fontSize: 19,
@@ -657,7 +759,71 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 28,
     fontWeight: '800',
-    marginBottom: 30,
+  },
+
+  phrase: {
+    color: '#7F95BC',
+    fontSize: 15,
+    marginBottom: 20,
+  },
+
+  emptyMetaBox: {
+    alignItems: 'center',
+    marginTop: 20,
+  },
+
+  firstMetaButton: {
+    backgroundColor: '#2563EB',
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    marginTop: 18,
+  },
+
+  metaCard: {
+    backgroundColor: '#0D1B33',
+    borderRadius: 18,
+    padding: 18,
+    marginBottom: 18,
+  },
+
+  metaTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+
+  metaStatus: {
+    marginTop: 4,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+
+  progressBack: {
+    height: 12,
+    backgroundColor: '#13213A',
+    borderRadius: 10,
+    marginTop: 15,
+    overflow: 'hidden',
+  },
+
+  progressFront: {
+    height: 12,
+    backgroundColor: '#2563EB',
+  },
+
+  metaConcluida: {
+    backgroundColor: '#092417',
+    borderRadius: 14,
+    padding: 12,
+    marginTop: 12,
+  },
+
+  metaConcluidaTexto: {
+    color: '#22C55E',
+    fontWeight: '800',
+    textAlign: 'center',
   },
 
   bottomBar: {
@@ -674,15 +840,8 @@ const styles = StyleSheet.create({
     borderTopColor: '#0E1B32',
   },
 
-  bottomButton: {
-    alignItems: 'center',
-    width: 90,
-  },
-
-  bottomText: {
-    marginTop: 6,
-    fontSize: 13,
-  },
+  bottomButton: { alignItems: 'center', width: 90 },
+  bottomText: { marginTop: 6, fontSize: 13 },
 
   addButton: {
     width: 74,
@@ -700,9 +859,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.55)',
   },
 
-  keyboardView: {
-    width: '100%',
-  },
+  keyboardView: { width: '100%' },
 
   modalContent: {
     backgroundColor: '#0B1426',
@@ -758,13 +915,8 @@ const styles = StyleSheet.create({
     borderColor: '#2A0D12',
   },
 
-  incomeSelected: {
-    borderColor: '#22C55E',
-  },
-
-  expenseSelected: {
-    borderColor: '#EF4444',
-  },
+  incomeSelected: { borderColor: '#22C55E' },
+  expenseSelected: { borderColor: '#EF4444' },
 
   modalButtonTitle: {
     color: '#FFFFFF',
@@ -775,9 +927,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
 
-  formBox: {
-    marginTop: 24,
-  },
+  formBox: { marginTop: 24 },
 
   formTitle: {
     color: '#FFFFFF',
@@ -798,9 +948,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 
-  inputDescricao: {
-    minHeight: 54,
-  },
+  inputDescricao: { minHeight: 54 },
 
   saveButton: {
     backgroundColor: '#2563EB',
@@ -821,6 +969,27 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 26,
     fontSize: 16,
+    fontWeight: '700',
+  },
+
+  sugestoesArea: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 18,
+  },
+
+  sugestaoButton: {
+    backgroundColor: '#081221',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#13213A',
+  },
+
+  sugestaoText: {
+    color: '#FFFFFF',
     fontWeight: '700',
   },
 });
