@@ -1,46 +1,36 @@
-// ===================================================
-// ARQUIVO: src/main/java/com/Projeto/GestorFin/entities/Transacao.java
-// PASTA:   entities
-// ===================================================
-
 package com.Projeto.GestorFin.entities;
 
 import jakarta.persistence.*;
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "transacoes")
-public class Transacao {
+public class Transacao implements Serializable {
+    private static final long serialVersionUID = 1L;
 
-    // ID numérico gerado automaticamente pelo banco (AUTO_INCREMENT)
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Relacionamento: muitas transações pertencem a UM usuário
     @ManyToOne
     @JoinColumn(name = "usuario_id", nullable = false)
     private Usuario usuario;
 
-    // Relacionamento: muitas transações pertencem a UMA categoria
     @ManyToOne
     @JoinColumn(name = "categoria_id", nullable = false)
     private Categoria categoria;
 
-    // Aceita apenas "receita" ou "despesa"
     @Column(nullable = false)
     private String tipo;
 
-    // BigDecimal é o tipo correto para dinheiro (evita erros de arredondamento)
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal valor;
 
-    // Descrição é opcional (pode ser nula)
     private String descricao;
 
-    // LocalDate = só a data, sem horário. Ex: 2025-05-10
     @Column(nullable = false)
     private LocalDate data;
 
@@ -61,10 +51,8 @@ public class Transacao {
         this.updatedAt = LocalDateTime.now();
     }
 
-    // Construtor vazio — obrigatório!
     public Transacao() {}
 
-    // Getters e Setters
     public Long getId()                         { return id; }
     public void setId(Long id)                  { this.id = id; }
 

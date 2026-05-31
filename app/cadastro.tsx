@@ -23,7 +23,8 @@ import { estilosLogin } from '../src/styles/_estilosLogin';
 import { estilosGlobais } from '../src/componentes/estilosGlobais';
 
 // ⚠️ URL do seu Codespace — porta 8080
-const API_URL = 'https://literate-lamp-77rxx9qg4qx2pr5x-8080.app.github.dev';
+// ✅ Sem barra no final
+const API_URL = 'https://reimagined-enigma-wvrrx4xrq599cgjx6-8080.app.github.dev';
 
 export default function TelaCadastro() {
   const router = useRouter();
@@ -97,7 +98,7 @@ export default function TelaCadastro() {
         const dados = await respostaLogin.json();
 
         // Salva os dados do usuário localmente
-        await AsyncStorage.setItem('@usuario_id', dados.id);
+        await AsyncStorage.setItem('@usuario_id', String(dados.id));
         await AsyncStorage.setItem('@usuario_nome', dados.nome);
         await AsyncStorage.setItem('@usuario_email', dados.email);
       }

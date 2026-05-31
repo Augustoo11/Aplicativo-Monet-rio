@@ -1,36 +1,36 @@
-// ===================================================
-// ARQUIVO: src/main/java/com/Projeto/GestorFin/entities/Categoria.java
-// PASTA:   entities
-// ===================================================
-
 package com.Projeto.GestorFin.entities;
 
 import jakarta.persistence.*;
+import java.io.Serializable;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "categorias")
-public class Categoria {
+public class Categoria implements Serializable {
+    private static final long serialVersionUID = 1L;
 
-    // ID numérico gerado automaticamente pelo banco (AUTO_INCREMENT)
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Relacionamento: muitas categorias pertencem a UM usuário
-    // @JoinColumn → coluna "usuario_id" é a chave estrangeira (FK) no banco
-    @ManyToOne
-    @JoinColumn(name = "usuario_id", nullable = false)
-    private Usuario usuario;
+    // -------------------------------------------------------
+    // CAMPO TEMPORARIAMENTE REMOVIDO — aguardando banco adicionar coluna usuario_id
+    // Quando o banco adicionar a coluna, descomentar o bloco abaixo:
+    //
+    // @ManyToOne
+    // @JoinColumn(name = "usuario_id", nullable = false)
+    // private Usuario usuario;
+    //
+    // public Usuario getUsuario()             { return usuario; }
+    // public void setUsuario(Usuario usuario) { this.usuario = usuario; }
+    // -------------------------------------------------------
 
     @Column(nullable = false)
     private String nome;
 
-    // Aceita apenas "receita" ou "despesa"
     @Column(nullable = false)
     private String tipo;
 
-    // Cor em hexadecimal, ex: "#FF5733"
     private String cor;
 
     @Column(name = "padrao")
@@ -39,21 +39,15 @@ public class Categoria {
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
-    // Preenche a data automaticamente antes de salvar
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
     }
 
-    // Construtor vazio — obrigatório!
     public Categoria() {}
 
-    // Getters e Setters
     public Long getId()                         { return id; }
     public void setId(Long id)                  { this.id = id; }
-
-    public Usuario getUsuario()                 { return usuario; }
-    public void setUsuario(Usuario usuario)     { this.usuario = usuario; }
 
     public String getNome()                     { return nome; }
     public void setNome(String nome)            { this.nome = nome; }

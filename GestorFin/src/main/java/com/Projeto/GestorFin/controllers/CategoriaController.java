@@ -1,111 +1,74 @@
-// ===================================================
-// ARQUIVO: src/main/java/com/Projeto/GestorFin/controllers/CategoriaController.java
-// PASTA:   controllers
-// ===================================================
-
 package com.Projeto.GestorFin.controllers;
 
 import com.Projeto.GestorFin.entities.Categoria;
 import com.Projeto.GestorFin.repositories.CategoriaRepository;
-import com.Projeto.GestorFin.repositories.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 
+// -------------------------------------------------------
+// ATENÇÃO: UsuarioRepository removido temporariamente
+// pois a coluna usuario_id ainda não existe no banco.
+// Quando o banco adicionar a coluna, restaurar:
+//   1. import UsuarioRepository
+//   2. @Autowired UsuarioRepository usuarioRepository
+//   3. Validações de usuário no saveCategoria()
+//   4. Endpoint getCategoriasByUsuario()
+// -------------------------------------------------------
 @RestController
-@RequestMapping("/categorias")
 public class CategoriaController {
 
     @Autowired
-    private CategoriaRepository categoriaRepository;
+    CategoriaRepository categoriaRepository;
 
-    @Autowired
-    private UsuarioRepository usuarioRepository;
+    // POST /categorias → Cria uma categoria
+    @PostMapping("/categorias")
+    public String saveCategoria(@RequestBody Categoria categoria) {
 
-    // -------------------------------------------------------
-    // POST /categorias → Cria uma nova categoria
-    // JSON esperado:
-    // {
-    //   "usuario": { "id": "id-do-usuario" },
-    //   "nome": "Alimentação",
-    //   "tipo": "despesa",
-    //   "cor": "#FF5733",
-    //   "padrao": false
-    // }
-    // -------------------------------------------------------
-    @PostMapping
-    public ResponseEntity<String> criarCategoria(@RequestBody Categoria categoria) {
-
-        // Verifica se o usuário foi informado
-        if (categoria.getUsuario() == null || categoria.getUsuario().getId() == null) {
-            return ResponseEntity.badRequest().body("Erro: informe o id do usuário.");
-        }
-
-        // Verifica se o tipo é válido
+        // Valida o tipo
         String tipo = categoria.getTipo();
         if (tipo == null || (!tipo.equals("receita") && !tipo.equals("despesa"))) {
-            return ResponseEntity.badRequest().body("Erro: tipo deve ser 'receita' ou 'despesa'.");
-        }
-
-        // Verifica se o usuário existe no banco
-        String usuarioId = categoria.getUsuario().getId();
-        if (!usuarioRepository.existsById(usuarioId)) {
-            return ResponseEntity.status(404).body("Erro: usuário não encontrado.");
+            return "Erro: tipo deve ser 'receita' ou 'despesa'.";
         }
 
         categoriaRepository.save(categoria);
-        return ResponseEntity.status(201).body("Categoria criada com sucesso!");
+        return "Categoria salva com sucesso!";
     }
 
-    // -------------------------------------------------------
     // GET /categorias → Lista todas as categorias
-    // -------------------------------------------------------
-    @GetMapping
-    public ResponseEntity<List<Categoria>> listarCategorias() {
-        return ResponseEntity.ok(categoriaRepository.findAll());
+    @GetMapping("/categorias")
+    public List<Categoria> getAllCategorias() {
+        return categoriaRepository.findAll();
     }
 
-    // -------------------------------------------------------
-    // GET /categorias/usuario/{usuarioId} → Lista categorias de um usuário
-    // -------------------------------------------------------
-    @GetMapping("/usuario/{usuarioId}")
-    public ResponseEntity<List<Categoria>> listarPorUsuario(@PathVariable String usuarioId) {
-
-        if (!usuarioRepository.existsById(usuarioId)) {
-            return ResponseEntity.notFound().build();
-        }
-
-        return ResponseEntity.ok(categoriaRepository.findByUsuarioId(usuarioId));
+    // GET /categorias/{id} → Busca categoria por ID
+    @GetMapping("/categorias/{id}")
+    public Optional<Categoria> getCategoriaById(@PathVariable Long id) {
+        return categoriaRepository.findById(id);
     }
 
-    // -------------------------------------------------------
     // PUT /categorias/{id} → Atualiza uma categoria
-    // -------------------------------------------------------
-    @PutMapping("/{id}")
-    public ResponseEntity<String> atualizarCategoria(@PathVariable Long id, @RequestBody Categoria atualizada) {
-        return categoriaRepository.findById(id)
-                .map(categoria -> {
-                    categoria.setNome(atualizada.getNome());
-                    categoria.setTipo(atualizada.getTipo());
-                    categoria.setCor(atualizada.getCor());
-                    categoria.setPadrao(atualizada.getPadrao());
-                    categoriaRepository.save(categoria);
-                    return ResponseEntity.ok("Categoria atualizada com sucesso!");
-                })
-                .orElse(ResponseEntity.notFound().build());
+    @PutMapping("/categorias/{id}")
+    public String updateCategoria(@PathVariable Long id, @RequestBody Categoria categoria) {
+        return categoriaRepository.findById(id).map(existente -> {
+            existente.setNome(categoria.getNome());
+            existente.setTipo(categoria.getTipo());
+            existente.setCor(categoria.getCor());
+            existente.setPadrao(categoria.getPadrao());
+            categoriaRepository.save(existente);
+            return "Categoria atualizada com sucesso!";
+        }).orElse("Categoria não encontrada!");
     }
 
-    // -------------------------------------------------------
     // DELETE /categorias/{id} → Remove uma categoria
-    // -------------------------------------------------------
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletarCategoria(@PathVariable Long id) {
+    @DeleteMapping("/categorias/{id}")
+    public String deleteCategoria(@PathVariable Long id) {
         if (categoriaRepository.existsById(id)) {
             categoriaRepository.deleteById(id);
-            return ResponseEntity.noContent().build();
+            return "Categoria deletada com sucesso!";
         }
-        return ResponseEntity.notFound().build();
+        return "Categoria não encontrada!";
     }
 }
