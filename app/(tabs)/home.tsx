@@ -7,23 +7,25 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FontAwesome5, Ionicons } from '@expo/vector-icons';
-// ─── IMPORT CORRIGIDO ───
+import { useRouter } from 'expo-router';
 import { useTransacoesStore } from '../../src/store/src/store/useTransacoesStore';
+import PerfilModal from '../../src/componentes/PerfilModal';
 
-// ─── URL do seu Backend ────────────────────────────────────────────────────────
 const API_URL = 'https://reimagined-enigma-wvrrx4xrq599cgjx6-8080.app.github.dev';
 
 export default function Home() {
-  // ─── ADICIONADO: setTransacoesDoBanco ───
   const { totalReceitas, totalDespesas, saldo, transacoes, adicionarTransacao, setTransacoesDoBanco } =
     useTransacoesStore();
+
+  const router = useRouter();
 
   const [abaAtiva, setAbaAtiva] = useState<'inicio' | 'metas'>('inicio');
   const [modalVisible, setModalVisible] = useState(false);
   const [modalMeta, setModalMeta] = useState(false);
+  const [modalPerfil, setModalPerfil] = useState(false); // ← novo
   const [nomeUsuario, setNomeUsuario] = useState('Usuário');
+  const [emailUsuario, setEmailUsuario] = useState('');   // ← novo
 
-  // ─── Estados para o Banco de Dados ───
   const [usuarioId, setUsuarioId] = useState<string | null>(null);
   const [categorias, setCategorias] = useState<any[]>([]);
   const [salvando, setSalvando] = useState(false);
@@ -40,18 +42,19 @@ export default function Home() {
 
   const sugestoes = ['Notebook', 'Viagem', 'Curso', 'Celular', 'Reserva'];
 
-  // ─── Efeito para carregar dados iniciais ───
   useEffect(() => {
     async function carregarDadosIniciais() {
       const nome = await AsyncStorage.getItem('@usuario_nome');
       if (nome) setNomeUsuario(nome);
+
+      const email = await AsyncStorage.getItem('@usuario_email'); // ← novo
+      if (email) setEmailUsuario(email);
 
       const id = await AsyncStorage.getItem('@usuario_id');
       setUsuarioId(id);
 
       await buscarCategorias();
 
-      // ─── NOVO: Busca as transações exclusivas deste usuário ───
       if (id) {
         await buscarTransacoesDoUsuario(id);
       }
@@ -59,18 +62,14 @@ export default function Home() {
     carregarDadosIniciais();
   }, []);
 
-  // ─── Buscar transações do usuário específico ───
   async function buscarTransacoesDoUsuario(idDoUsuario: string) {
     try {
       const resposta = await fetch(`${API_URL}/transacoes`);
       if (resposta.ok) {
         const todasTransacoes = await resposta.json();
-
-        // Filtra para garantir que ninguem veja o saldo dos outros
         const transacoesDoUsuario = todasTransacoes.filter(
           (t: any) => String(t.usuario.id) === String(idDoUsuario)
         );
-
         const transacoesFormatadas = transacoesDoUsuario.map((t: any) => ({
           id: String(t.id),
           tipo: t.tipo,
@@ -82,8 +81,6 @@ export default function Home() {
           data: new Date(t.data + 'T00:00:00'),
           emoji: t.tipo === 'receita' ? '💰' : '💸'
         }));
-
-        // Atualiza o Zustand com os dados vindos do banco
         if (setTransacoesDoBanco) {
           setTransacoesDoBanco(transacoesFormatadas);
         }
@@ -93,7 +90,6 @@ export default function Home() {
     }
   }
 
-  // ─── Buscar categorias da API ───
   async function buscarCategorias() {
     try {
       const resposta = await fetch(`${API_URL}/categorias`);
@@ -102,8 +98,15 @@ export default function Home() {
         setCategorias(dados);
       }
     } catch (erro) {
-      console.log('Erro ao buscar categorias na Home:', erro);
+      console.log('Erro ao buscar categorias:', erro);
     }
+  }
+
+  // ── Sair da conta ────────────────────────────────────────────────────────────
+  async function sairDaConta() {
+    await AsyncStorage.multiRemove(['@usuario_id', '@usuario_nome', '@usuario_email']);
+    setModalPerfil(false);
+    router.replace('/');
   }
 
   const receitas = totalReceitas();
@@ -139,39 +142,30 @@ export default function Home() {
     setModalVisible(false);
   }
 
-  // ─── Salvar Transação (Integrado ao Banco) ───
   async function salvarTransacao() {
     if (!tipoSelecionado || !nomeTransacao || !valorTransacao) {
       Alert.alert('Atenção', 'Preencha a categoria e o valor.');
       return;
     }
-
     const valorNumerico = Number(valorTransacao.replace(',', '.'));
-
     if (isNaN(valorNumerico) || valorNumerico <= 0) {
       Alert.alert('Atenção', 'Digite um valor válido.');
       return;
     }
-
     if (!usuarioId) {
       Alert.alert('Erro', 'Usuário não identificado. Refaça o login.');
       return;
     }
-
     const categoriaCorrespondente = categorias.find(
       (c) => c.nome.toLowerCase() === nomeTransacao.toLowerCase() && c.tipo === tipoSelecionado
     ) || categorias.find((c) => c.tipo === tipoSelecionado);
-
     if (!categoriaCorrespondente) {
-      Alert.alert('Erro', 'Nenhuma categoria compatível encontrada no banco. Tente novamente mais tarde.');
+      Alert.alert('Erro', 'Nenhuma categoria compatível encontrada no banco.');
       return;
     }
-
     setSalvando(true);
-
     try {
       const hoje = new Date().toISOString().split('T')[0];
-
       const novaTransacaoAPI = {
         usuario: { id: usuarioId },
         categoria: { id: categoriaCorrespondente.id },
@@ -180,17 +174,13 @@ export default function Home() {
         descricao: descricaoTransacao || categoriaCorrespondente.nome,
         data: hoje,
       };
-
       const resposta = await fetch(`${API_URL}/transacoes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(novaTransacaoAPI),
       });
-
       if (resposta.ok || resposta.status === 201) {
-        // Se salvar com sucesso, atualizamos as transações do banco novamente para pegar o ID real e ordenar certo
         await buscarTransacoesDoUsuario(usuarioId);
-
         Alert.alert('✅ Sucesso', 'Transação registrada no banco!');
         limparFormulario();
       } else {
@@ -204,19 +194,16 @@ export default function Home() {
     }
   }
 
-  // ─── Metas ───
   function salvarMeta() {
     if (!metaNome || !metaValor) {
       Alert.alert('Atenção', 'Preencha o nome e o valor da meta.');
       return;
     }
-
     const valor = Number(metaValor.replace(',', '.'));
     if (isNaN(valor) || valor <= 0) {
       Alert.alert('Atenção', 'Digite um valor válido.');
       return;
     }
-
     const novaMeta = { id: Date.now(), nome: metaNome, valor };
     setMetas([...metas, novaMeta]);
     setMetaNome('');
@@ -265,7 +252,6 @@ export default function Home() {
     const porcentagem = saldoAtual <= 0 ? 0 : Math.min((saldoAtual / item.valor) * 100, 100);
     const falta = item.valor - saldoAtual;
     const metaFeita = porcentagem >= 100;
-
     return (
       <View style={styles.metaCard} key={item.id}>
         <View style={styles.metaTop}>
@@ -279,16 +265,13 @@ export default function Home() {
             <Ionicons name="trash-outline" size={22} color="#EF4444" />
           </TouchableOpacity>
         </View>
-
         <Text style={styles.transactionDate}>Objetivo: {formatarMoeda(item.valor)}</Text>
         <Text style={styles.transactionDate}>Saldo atual: {formatarMoeda(saldoAtual)}</Text>
         {!metaFeita && <Text style={styles.transactionDate}>Falta: {formatarMoeda(falta)}</Text>}
-
         <View style={styles.progressBack}>
           <View style={[styles.progressFront, { width: `${porcentagem}%` }]} />
         </View>
         <Text style={[styles.transactionDate, { marginTop: 10 }]}>{porcentagem.toFixed(0)}% concluído</Text>
-
         {metaFeita && (
           <View style={styles.metaConcluida}>
             <Text style={styles.metaConcluidaTexto}>Meta alcançada. Você atingiu esse objetivo.</Text>
@@ -301,7 +284,7 @@ export default function Home() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        
+
         {/* ─── Header ─── */}
         <View style={styles.header}>
           <View style={styles.brandArea}>
@@ -314,9 +297,15 @@ export default function Home() {
             </View>
             <Text style={styles.logoText}>GestorFin</Text>
           </View>
-          <View style={styles.profileCircle}>
+
+          {/* Botão do perfil — abre o modal */}
+          <TouchableOpacity
+            style={styles.profileCircle}
+            onPress={() => setModalPerfil(true)}
+            activeOpacity={0.8}
+          >
             <Text style={styles.profileText}>{iniciaisUsuario}</Text>
-          </View>
+          </TouchableOpacity>
         </View>
 
         {/* ─── Listagem ─── */}
@@ -337,7 +326,6 @@ export default function Home() {
                   </View>
                   <Text numberOfLines={1} adjustsFontSizeToFit style={styles.greenText}>{formatarMoeda(receitas)}</Text>
                 </View>
-
                 <View style={styles.card}>
                   <View style={styles.cardTop}>
                     <View style={styles.dotRed} />
@@ -368,9 +356,7 @@ export default function Home() {
                   <Text style={styles.viewAll}>Nova meta</Text>
                 </TouchableOpacity>
               </View>
-
               <Text style={styles.phrase}>Acompanhe suas metas usando o saldo atual do aplicativo.</Text>
-
               {metas.length === 0 && (
                 <View style={styles.emptyMetaBox}>
                   <Text style={styles.emptyText}>Nenhuma meta criada ainda.</Text>
@@ -379,7 +365,6 @@ export default function Home() {
                   </TouchableOpacity>
                 </View>
               )}
-
               {metas.map(mostrarMeta)}
             </>
           )}
@@ -391,18 +376,26 @@ export default function Home() {
             <FontAwesome5 name="th-large" size={20} color={abaAtiva === 'inicio' ? '#3B82F6' : '#5C6F91'} />
             <Text style={[styles.bottomText, { color: abaAtiva === 'inicio' ? '#3B82F6' : '#5C6F91' }]}>Início</Text>
           </TouchableOpacity>
-
           <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}>
             <FontAwesome5 name="plus" size={24} color="#FFFFFF" />
           </TouchableOpacity>
-
           <TouchableOpacity style={styles.bottomButton} onPress={() => setAbaAtiva('metas')}>
             <Ionicons name="flag-outline" size={22} color={abaAtiva === 'metas' ? '#3B82F6' : '#5C6F91'} />
             <Text style={[styles.bottomText, { color: abaAtiva === 'metas' ? '#3B82F6' : '#5C6F91' }]}>Metas</Text>
           </TouchableOpacity>
         </View>
 
-        {/* ─── Modal de Metas ─── */}
+        {/* ─── Modal Perfil ─── */}
+        <PerfilModal
+          visible={modalPerfil}
+          onClose={() => setModalPerfil(false)}
+          nome={nomeUsuario}
+          email={emailUsuario}
+          usuarioId={usuarioId}
+          onSair={sairDaConta}
+        />
+
+        {/* ─── Modal Metas ─── */}
         <Modal visible={modalMeta} transparent animationType="slide">
           <View style={styles.modalOverlay}>
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
@@ -411,7 +404,6 @@ export default function Home() {
                   <View style={styles.modalLine} />
                   <Text style={styles.modalTitle}>Nova Meta</Text>
                   <Text style={styles.formTitle}>Sugestões</Text>
-
                   <View style={styles.sugestoesArea}>
                     {sugestoes.map((item) => (
                       <TouchableOpacity key={item} style={styles.sugestaoButton} onPress={() => setMetaNome(item)}>
@@ -419,23 +411,8 @@ export default function Home() {
                       </TouchableOpacity>
                     ))}
                   </View>
-
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Nome da meta"
-                    placeholderTextColor="#9ca3af"
-                    value={metaNome}
-                    onChangeText={setMetaNome}
-                  />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Valor a atingir (R$)"
-                    placeholderTextColor="#9ca3af"
-                    keyboardType="numeric"
-                    value={metaValor}
-                    onChangeText={setMetaValor}
-                  />
-
+                  <TextInput style={styles.input} placeholder="Nome da meta" placeholderTextColor="#9ca3af" value={metaNome} onChangeText={setMetaNome} />
+                  <TextInput style={styles.input} placeholder="Valor a atingir (R$)" placeholderTextColor="#9ca3af" keyboardType="numeric" value={metaValor} onChangeText={setMetaValor} />
                   <View style={styles.botoesModalRow}>
                     <TouchableOpacity style={styles.btnCancelar} onPress={() => setModalMeta(false)}>
                       <Text style={styles.btnCancelarTexto}>Cancelar</Text>
@@ -450,7 +427,7 @@ export default function Home() {
           </View>
         </Modal>
 
-        {/* ─── Modal de Nova Transação ─── */}
+        {/* ─── Modal Nova Transação ─── */}
         <Modal visible={modalVisible} transparent animationType="slide">
           <View style={styles.modalOverlay}>
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
@@ -458,46 +435,17 @@ export default function Home() {
                 <View style={styles.modalContent}>
                   <View style={styles.modalLine} />
                   <Text style={styles.modalTitle}>Nova Transação</Text>
-
                   <View style={styles.tipoContainer}>
-                    <TouchableOpacity
-                      style={[styles.tipoBotao, tipoSelecionado === 'receita' && styles.receitaBg]}
-                      onPress={() => setTipoSelecionado('receita')}
-                    >
+                    <TouchableOpacity style={[styles.tipoBotao, tipoSelecionado === 'receita' && styles.receitaBg]} onPress={() => setTipoSelecionado('receita')}>
                       <Text style={[styles.tipoTexto, tipoSelecionado === 'receita' && { color: '#fff' }]}>💰 Receita</Text>
                     </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[styles.tipoBotao, tipoSelecionado === 'despesa' && styles.despesaBg]}
-                      onPress={() => setTipoSelecionado('despesa')}
-                    >
+                    <TouchableOpacity style={[styles.tipoBotao, tipoSelecionado === 'despesa' && styles.despesaBg]} onPress={() => setTipoSelecionado('despesa')}>
                       <Text style={[styles.tipoTexto, tipoSelecionado === 'despesa' && { color: '#fff' }]}>💸 Despesa</Text>
                     </TouchableOpacity>
                   </View>
-
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Categoria (Ex: Salário, Alimentação)"
-                    placeholderTextColor="#9ca3af"
-                    value={nomeTransacao}
-                    onChangeText={setNomeTransacao}
-                  />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Descrição opcional"
-                    placeholderTextColor="#9ca3af"
-                    value={descricaoTransacao}
-                    onChangeText={setDescricaoTransacao}
-                  />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Valor (R$)"
-                    placeholderTextColor="#9ca3af"
-                    keyboardType="numeric"
-                    value={valorTransacao}
-                    onChangeText={setValorTransacao}
-                  />
-
+                  <TextInput style={styles.input} placeholder="Categoria (Ex: Salário, Alimentação)" placeholderTextColor="#9ca3af" value={nomeTransacao} onChangeText={setNomeTransacao} />
+                  <TextInput style={styles.input} placeholder="Descrição opcional" placeholderTextColor="#9ca3af" value={descricaoTransacao} onChangeText={setDescricaoTransacao} />
+                  <TextInput style={styles.input} placeholder="Valor (R$)" placeholderTextColor="#9ca3af" keyboardType="numeric" value={valorTransacao} onChangeText={setValorTransacao} />
                   <View style={styles.botoesModalRow}>
                     <TouchableOpacity style={styles.btnCancelar} onPress={limparFormulario} disabled={salvando}>
                       <Text style={styles.btnCancelarTexto}>Cancelar</Text>
@@ -517,7 +465,6 @@ export default function Home() {
   );
 }
 
-// ─── Estilos ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0F172A' },
   content: { flex: 1, paddingHorizontal: 20, paddingTop: 10 },
