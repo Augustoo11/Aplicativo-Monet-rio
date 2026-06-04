@@ -20,14 +20,13 @@ import { StatusBar } from 'react-native';
 import { estilosLogin } from '../src/styles/_estilosLogin';
 import { estilosGlobais } from '../src/componentes/estilosGlobais';
 
-// ⚠️ Cole aqui a URL da aba PORTS do seu Codespace (porta 8080)
-// Exemplo: 'https://SEU-USUARIO-8080.pp.github.dev'
 const API_URL = 'https://reimagined-enigma-wvrrx4xrq599cgjx6-8080.app.github.dev';
 
 export default function TelaDeLogin() {
-  const [email, definirEmail] = useState<string>('');
-  const [senha, definirSenha] = useState<string>('');
-  const [carregando, setCarregando] = useState<boolean>(false);
+  const [email, definirEmail]             = useState<string>('');
+  const [senha, definirSenha]             = useState<string>('');
+  const [carregando, setCarregando]       = useState<boolean>(false);
+  const [senhaVisivel, setSenhaVisivel]   = useState<boolean>(false); // ← olhinho
   const router = useRouter();
 
   useEffect(() => {
@@ -41,9 +40,7 @@ export default function TelaDeLogin() {
       Alert.alert('Atenção', 'Por favor, preencha seu e-mail e senha.');
       return;
     }
-
     setCarregando(true);
-
     try {
       const resposta = await fetch(`${API_URL}/usuarios/login`, {
         method: 'POST',
@@ -53,26 +50,19 @@ export default function TelaDeLogin() {
           senha,
         }),
       });
-
       const dados = await resposta.json();
-
       if (resposta.status === 401) {
         Alert.alert('Atenção', 'E-mail ou senha inválidos.');
         return;
       }
-
       if (!resposta.ok) {
         Alert.alert('Erro', dados.mensagem || 'Não foi possível fazer login. Tente novamente.');
         return;
       }
-
-      // ✅ Salva os dados do usuário localmente
       await AsyncStorage.setItem('@usuario_id', dados.id);
       await AsyncStorage.setItem('@usuario_nome', dados.nome);
       await AsyncStorage.setItem('@usuario_email', dados.email);
-
       router.replace('/(tabs)/home');
-
     } catch (erro) {
       Alert.alert(
         'Erro de conexão',
@@ -121,16 +111,26 @@ export default function TelaDeLogin() {
               />
             </View>
 
-            {/* SENHA */}
+            {/* SENHA com olhinho */}
             <View style={estilosGlobais.grupoEntrada}>
               <FontAwesome5 name="lock" size={16} color="#9ca3af" style={estilosGlobais.iconeEspacamento} />
               <TextInput
-                style={estilosGlobais.campoTexto}
+                style={[estilosGlobais.campoTexto, { flex: 1 }]}
                 placeholder="Sua senha"
-                secureTextEntry={true}
+                secureTextEntry={!senhaVisivel}
                 value={senha}
                 onChangeText={definirSenha}
               />
+              <TouchableOpacity
+                onPress={() => setSenhaVisivel(!senhaVisivel)}
+                style={{ paddingHorizontal: 10 }}
+              >
+                <FontAwesome5
+                  name={senhaVisivel ? 'eye-slash' : 'eye'}
+                  size={16}
+                  color="#9ca3af"
+                />
+              </TouchableOpacity>
             </View>
 
             {/* BOTÃO ENTRAR */}

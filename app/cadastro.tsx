@@ -22,18 +22,18 @@ import { useRouter } from 'expo-router';
 import { estilosLogin } from '../src/styles/_estilosLogin';
 import { estilosGlobais } from '../src/componentes/estilosGlobais';
 
-// ⚠️ URL do seu Codespace — porta 8080
-// ✅ Sem barra no final
 const API_URL = 'https://reimagined-enigma-wvrrx4xrq599cgjx6-8080.app.github.dev';
 
 export default function TelaCadastro() {
   const router = useRouter();
 
-  const [nome, setNome] = useState<string>('');
-  const [email, setEmail] = useState<string>('');
-  const [senha, setSenha] = useState<string>('');
-  const [confirmarSenha, setConfirmarSenha] = useState<string>('');
-  const [carregando, setCarregando] = useState<boolean>(false);
+  const [nome, setNome]                               = useState<string>('');
+  const [email, setEmail]                             = useState<string>('');
+  const [senha, setSenha]                             = useState<string>('');
+  const [confirmarSenha, setConfirmarSenha]           = useState<string>('');
+  const [carregando, setCarregando]                   = useState<boolean>(false);
+  const [senhaVisivel, setSenhaVisivel]               = useState<boolean>(false); // ← olhinho senha
+  const [confirmarSenhaVisivel, setConfirmarSenhaVisivel] = useState<boolean>(false); // ← olhinho confirmar
 
   useEffect(() => {
     StatusBar.setBarStyle('light-content');
@@ -48,21 +48,16 @@ export default function TelaCadastro() {
       Alert.alert('Atenção', 'Por favor, preencha todos os campos.');
       return;
     }
-
     if (senha !== confirmarSenha) {
       Alert.alert('Atenção', 'As senhas não coincidem.');
       return;
     }
-
     if (senha.length < 6) {
       Alert.alert('Atenção', 'A senha deve ter pelo menos 6 caracteres.');
       return;
     }
-
     setCarregando(true);
-
     try {
-      // PASSO 1 — Cria o usuário no banco (POST /usuarios)
       const respostaCadastro = await fetch(`${API_URL}/usuarios`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -72,19 +67,14 @@ export default function TelaCadastro() {
           senha,
         }),
       });
-
-      // E-mail já cadastrado
       if (respostaCadastro.status === 409) {
         Alert.alert('Atenção', 'E-mail já cadastrado. Tente fazer login.');
         return;
       }
-
       if (!respostaCadastro.ok) {
         Alert.alert('Erro', 'Não foi possível criar a conta. Tente novamente.');
         return;
       }
-
-      // PASSO 2 — Faz login automático para pegar o ID do usuário
       const respostaLogin = await fetch(`${API_URL}/usuarios/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -93,21 +83,15 @@ export default function TelaCadastro() {
           senha,
         }),
       });
-
       if (respostaLogin.ok) {
         const dados = await respostaLogin.json();
-
-        // Salva os dados do usuário localmente
         await AsyncStorage.setItem('@usuario_id', String(dados.id));
         await AsyncStorage.setItem('@usuario_nome', dados.nome);
         await AsyncStorage.setItem('@usuario_email', dados.email);
       }
-
-      // ✅ Cadastro feito — vai para a home
       Alert.alert('Sucesso!', 'Conta criada com sucesso!', [
         { text: 'OK', onPress: () => router.replace('/(tabs)/home') },
       ]);
-
     } catch (erro) {
       Alert.alert(
         'Erro de conexão',
@@ -173,30 +157,50 @@ export default function TelaCadastro() {
                 />
               </View>
 
-              {/* SENHA */}
+              {/* SENHA com olhinho */}
               <View style={[estilosGlobais.grupoEntrada, { width: '100%' }]}>
                 <FontAwesome5 name="lock" size={16} color="#9ca3af" style={estilosGlobais.iconeEspacamento} />
                 <TextInput
-                  style={estilosGlobais.campoTexto}
+                  style={[estilosGlobais.campoTexto, { flex: 1 }]}
                   placeholder="Senha"
                   placeholderTextColor="#9ca3af"
-                  secureTextEntry={true}
+                  secureTextEntry={!senhaVisivel}
                   value={senha}
                   onChangeText={setSenha}
                 />
+                <TouchableOpacity
+                  onPress={() => setSenhaVisivel(!senhaVisivel)}
+                  style={{ paddingHorizontal: 10 }}
+                >
+                  <FontAwesome5
+                    name={senhaVisivel ? 'eye-slash' : 'eye'}
+                    size={16}
+                    color="#9ca3af"
+                  />
+                </TouchableOpacity>
               </View>
 
-              {/* CONFIRMAR SENHA */}
+              {/* CONFIRMAR SENHA com olhinho */}
               <View style={[estilosGlobais.grupoEntrada, { width: '100%' }]}>
                 <FontAwesome5 name="check-circle" size={16} color="#9ca3af" style={estilosGlobais.iconeEspacamento} />
                 <TextInput
-                  style={estilosGlobais.campoTexto}
+                  style={[estilosGlobais.campoTexto, { flex: 1 }]}
                   placeholder="Confirmar Senha"
                   placeholderTextColor="#9ca3af"
-                  secureTextEntry={true}
+                  secureTextEntry={!confirmarSenhaVisivel}
                   value={confirmarSenha}
                   onChangeText={setConfirmarSenha}
                 />
+                <TouchableOpacity
+                  onPress={() => setConfirmarSenhaVisivel(!confirmarSenhaVisivel)}
+                  style={{ paddingHorizontal: 10 }}
+                >
+                  <FontAwesome5
+                    name={confirmarSenhaVisivel ? 'eye-slash' : 'eye'}
+                    size={16}
+                    color="#9ca3af"
+                  />
+                </TouchableOpacity>
               </View>
 
               {/* BOTÃO */}
