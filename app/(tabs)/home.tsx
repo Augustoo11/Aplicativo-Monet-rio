@@ -1,76 +1,124 @@
+// app/(tabs)/home.tsx
+// ─────────────────────────────────────────────────────────────
+// Tela principal do app (Home).
+// Mostra o saldo, receitas, despesas e a lista de transações.
+// Também tem a tela de Metas.
+// ─────────────────────────────────────────────────────────────
+
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal,
-  TextInput, Alert, KeyboardAvoidingView, Platform, Image, ActivityIndicator
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Modal,
+  TextInput,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FontAwesome5, Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+
 import { useTransacoesStore } from '../../src/store/src/store/useTransacoesStore';
 import PerfilModal from '../../src/componentes/PerfilModal';
+import { API_URL, CATEGORIAS_DESPESA, CATEGORIAS_RECEITA, CORES } from '../../src/config';
 
-const API_URL = 'https://reimagined-enigma-wvrrx4xrq599cgjx6-8080.app.github.dev';
+// ─── Tipos ────────────────────────────────────────────────────
+// Formato de uma categoria vinda do banco
+type Categoria = {
+  id: number;
+  nome: string;
+  tipo: string;
+};
 
+// Formato de uma meta financeira (salva apenas na memória)
+type Meta = {
+  id: number;
+  nome: string;
+  valor: number;
+};
+
+// ─────────────────────────────────────────────────────────────
 export default function Home() {
-  const { totalReceitas, totalDespesas, saldo, transacoes, adicionarTransacao, setTransacoesDoBanco } =
+  // Dados do store global (transações, saldo, etc.)
+  const { totalReceitas, totalDespesas, saldo, transacoes, setTransacoesDoBanco } =
     useTransacoesStore();
 
   const router = useRouter();
 
+  // ── Aba ativa: "inicio" ou "metas"
   const [abaAtiva, setAbaAtiva] = useState<'inicio' | 'metas'>('inicio');
-  const [modalVisible, setModalVisible] = useState(false);
-  const [modalMeta, setModalMeta] = useState(false);
-  const [modalPerfil, setModalPerfil] = useState(false); // ← novo
-  const [nomeUsuario, setNomeUsuario] = useState('Usuário');
-  const [emailUsuario, setEmailUsuario] = useState('');   // ← novo
 
+  // ── Dados do usuário logado
+  const [nomeUsuario, setNomeUsuario] = useState('Usuário');
+  const [emailUsuario, setEmailUsuario] = useState('');
   const [usuarioId, setUsuarioId] = useState<string | null>(null);
-  const [categorias, setCategorias] = useState<any[]>([]);
+
+  // ── Modais
+  const [modalTransacao, setModalTransacao] = useState(false);
+  const [modalMeta, setModalMeta] = useState(false);
+  const [modalPerfil, setModalPerfil] = useState(false);
+
+  // ── Formulário de nova transação
+  const [tipo, setTipo] = useState<'receita' | 'despesa'>('despesa');
+  const [categoriaSelecionada, setCategoriaSelecionada] = useState<Categoria | null>(null);
+  const [valor, setValor] = useState('');
+  const [descricao, setDescricao] = useState('');
   const [salvando, setSalvando] = useState(false);
 
-  const [tipoSelecionado, setTipoSelecionado] = useState<'receita' | 'despesa' | null>(null);
-  const [nomeTransacao, setNomeTransacao] = useState('');
-  const [valorTransacao, setValorTransacao] = useState('');
-  const [descricaoTransacao, setDescricaoTransacao] = useState('');
+  // ── Categorias vindas do banco
+  const [categoriasDoBanco, setCategoriasDoBanco] = useState<Categoria[]>([]);
 
-  const [metaNome, setMetaNome] = useState('');
-  const [metaValor, setMetaValor] = useState('');
-  const [metas, setMetas] = useState<any[]>([]);
+  // ── Metas (apenas na memória por enquanto)
+  const [metas, setMetas] = useState<Meta[]>([]);
+  const [nomeMeta, setNomeMeta] = useState('');
+  const [valorMeta, setValorMeta] = useState('');
+
+  // ── Filtro da lista de transações
   const [filtro, setFiltro] = useState<'todos' | 'receita' | 'despesa'>('todos');
 
-  const sugestoes = ['Notebook', 'Viagem', 'Curso', 'Celular', 'Reserva'];
-
+  // ─── Ao abrir o app: carrega dados do usuário e transações ────
   useEffect(() => {
-    async function carregarDadosIniciais() {
-      const nome = await AsyncStorage.getItem('@usuario_nome');
-      if (nome) setNomeUsuario(nome);
-
-      const email = await AsyncStorage.getItem('@usuario_email'); // ← novo
-      if (email) setEmailUsuario(email);
-
-      const id = await AsyncStorage.getItem('@usuario_id');
-      setUsuarioId(id);
-
-      await buscarCategorias();
-
-      if (id) {
-        await buscarTransacoesDoUsuario(id);
-      }
-    }
     carregarDadosIniciais();
   }, []);
 
-  async function buscarTransacoesDoUsuario(idDoUsuario: string) {
+  // Quando o tipo (receita/despesa) muda, limpa a categoria selecionada
+  useEffect(() => {
+    setCategoriaSelecionada(null);
+  }, [tipo]);
+
+  async function carregarDadosIniciais() {
+    // Pega os dados salvos no login
+    const nome = await AsyncStorage.getItem('@usuario_nome');
+    const email = await AsyncStorage.getItem('@usuario_email');
+    const id = await AsyncStorage.getItem('@usuario_id');
+
+    if (nome) setNomeUsuario(nome);
+    if (email) setEmailUsuario(email);
+    setUsuarioId(id);
+
+    // Busca categorias e transações do banco
+    await buscarCategorias();
+    if (id) await buscarTransacoes(id);
+  }
+
+  // ─── Busca todas as transações do usuário no banco ────────────
+  async function buscarTransacoes(idDoUsuario: string) {
     try {
-      const resposta = await fetch(`${API_URL}/transacoes`);
+      const resposta = await fetch(`${API_URL}/transacoes/usuario/${idDoUsuario}`);
+
       if (resposta.ok) {
-        const todasTransacoes = await resposta.json();
-        const transacoesDoUsuario = todasTransacoes.filter(
-          (t: any) => String(t.usuario.id) === String(idDoUsuario)
-        );
-        const transacoesFormatadas = transacoesDoUsuario.map((t: any) => ({
+        const dados = await resposta.json();
+
+        // Converte o formato do banco para o formato do app
+        const formatadas = dados.map((t: any) => ({
           id: String(t.id),
           tipo: t.tipo,
           valor: t.valor,
@@ -79,313 +127,385 @@ export default function Home() {
           categoriaLabel: t.categoria.nome,
           descricao: t.descricao,
           data: new Date(t.data + 'T00:00:00'),
-          emoji: t.tipo === 'receita' ? '💰' : '💸'
         }));
-        if (setTransacoesDoBanco) {
-          setTransacoesDoBanco(transacoesFormatadas);
-        }
+
+        setTransacoesDoBanco(formatadas);
       }
     } catch (erro) {
       console.log('Erro ao buscar transações:', erro);
     }
   }
 
+  // ─── Busca categorias do banco ───────────────────────────────
   async function buscarCategorias() {
     try {
       const resposta = await fetch(`${API_URL}/categorias`);
       if (resposta.ok) {
         const dados = await resposta.json();
-        setCategorias(dados);
+        setCategoriasDoBanco(dados);
       }
     } catch (erro) {
       console.log('Erro ao buscar categorias:', erro);
     }
   }
 
-  // ── Sair da conta ────────────────────────────────────────────────────────────
-  async function sairDaConta() {
-    await AsyncStorage.multiRemove(['@usuario_id', '@usuario_nome', '@usuario_email']);
-    setModalPerfil(false);
-    router.replace('/');
-  }
-
-  const receitas = totalReceitas();
-  const despesas = totalDespesas();
-  const saldoAtual = saldo();
-
-  const lista = [...transacoes].sort((a, b) => b.data.getTime() - a.data.getTime());
-  const listaFiltrada = lista.filter((item) => {
-    if (filtro === 'todos') return true;
-    return item.tipo === filtro;
-  });
-
-  const primeiroNome = nomeUsuario.split(' ')[0];
-  const iniciaisUsuario = nomeUsuario
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((nome) => nome[0].toUpperCase())
-    .join('');
-
-  const mes = new Date().toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
-  const mesFormatado = mes.charAt(0).toUpperCase() + mes.slice(1);
-
-  function formatarMoeda(valor: number) {
-    return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  }
-
-  function limparFormulario() {
-    setNomeTransacao('');
-    setValorTransacao('');
-    setDescricaoTransacao('');
-    setTipoSelecionado(null);
-    setModalVisible(false);
-  }
-
+  // ─── Salva uma nova transação no banco ───────────────────────
   async function salvarTransacao() {
-    if (!tipoSelecionado || !nomeTransacao || !valorTransacao) {
-      Alert.alert('Atenção', 'Preencha a categoria e o valor.');
+    // Validações antes de salvar
+    if (!categoriaSelecionada) {
+      Alert.alert('Atenção', 'Selecione uma categoria.');
       return;
     }
-    const valorNumerico = Number(valorTransacao.replace(',', '.'));
-    if (isNaN(valorNumerico) || valorNumerico <= 0) {
-      Alert.alert('Atenção', 'Digite um valor válido.');
+    if (!valor) {
+      Alert.alert('Atenção', 'Informe o valor.');
       return;
     }
     if (!usuarioId) {
       Alert.alert('Erro', 'Usuário não identificado. Refaça o login.');
       return;
     }
-    const categoriaCorrespondente = categorias.find(
-      (c) => c.nome.toLowerCase() === nomeTransacao.toLowerCase() && c.tipo === tipoSelecionado
-    ) || categorias.find((c) => c.tipo === tipoSelecionado);
-    if (!categoriaCorrespondente) {
-      Alert.alert('Erro', 'Nenhuma categoria compatível encontrada no banco.');
+
+    // Converte "R$ 150,00" para 150.00
+    const valorNumerico = textoParaNumero(valor);
+
+    if (isNaN(valorNumerico) || valorNumerico <= 0) {
+      Alert.alert('Atenção', 'Digite um valor válido.');
       return;
     }
+
     setSalvando(true);
+
     try {
-      const hoje = new Date().toISOString().split('T')[0];
-      const novaTransacaoAPI = {
+      const hoje = new Date().toISOString().split('T')[0]; // "2026-06-04"
+
+      // Monta o JSON que o backend espera
+      const novaTransacao = {
         usuario: { id: usuarioId },
-        categoria: { id: categoriaCorrespondente.id },
-        tipo: tipoSelecionado,
+        categoria: { id: categoriaSelecionada.id },
+        tipo: tipo,
         valor: valorNumerico,
-        descricao: descricaoTransacao || categoriaCorrespondente.nome,
+        descricao: descricao || categoriaSelecionada.nome,
         data: hoje,
       };
+
       const resposta = await fetch(`${API_URL}/transacoes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(novaTransacaoAPI),
+        body: JSON.stringify(novaTransacao),
       });
+
       if (resposta.ok || resposta.status === 201) {
-        await buscarTransacoesDoUsuario(usuarioId);
-        Alert.alert('✅ Sucesso', 'Transação registrada no banco!');
+        // Sucesso! Atualiza a lista e fecha o modal
+        await buscarTransacoes(usuarioId);
+        Alert.alert('Salvo!', 'Transação registrada com sucesso!');
         limparFormulario();
       } else {
-        const mensagemErro = await resposta.text();
-        Alert.alert('Erro', mensagemErro || 'Não foi possível salvar no banco.');
+        const mensagem = await resposta.text();
+        Alert.alert('Erro', mensagem || 'Não foi possível salvar.');
       }
     } catch (erro) {
-      Alert.alert('Erro de Conexão', 'Não foi possível conectar ao servidor backend.');
+      Alert.alert('Erro de conexão', 'Não foi possível conectar ao servidor.');
     } finally {
       setSalvando(false);
     }
   }
 
+  // ─── Salva uma meta na memória ───────────────────────────────
   function salvarMeta() {
-    if (!metaNome || !metaValor) {
+    if (!nomeMeta || !valorMeta) {
       Alert.alert('Atenção', 'Preencha o nome e o valor da meta.');
       return;
     }
-    const valor = Number(metaValor.replace(',', '.'));
-    if (isNaN(valor) || valor <= 0) {
+
+    const valorNumerico = Number(valorMeta.replace(',', '.'));
+
+    if (isNaN(valorNumerico) || valorNumerico <= 0) {
       Alert.alert('Atenção', 'Digite um valor válido.');
       return;
     }
-    const novaMeta = { id: Date.now(), nome: metaNome, valor };
-    setMetas([...metas, novaMeta]);
-    setMetaNome('');
-    setMetaValor('');
+
+    setMetas([...metas, { id: Date.now(), nome: nomeMeta, valor: valorNumerico }]);
+    setNomeMeta('');
+    setValorMeta('');
     setModalMeta(false);
   }
 
+  // ─── Remove uma meta da lista ────────────────────────────────
   function excluirMeta(id: number) {
-    setMetas(metas.filter((item) => item.id !== id));
+    setMetas(metas.filter((m) => m.id !== id));
   }
 
-  function BotaoFiltro({ nome, valor }: any) {
-    return (
-      <TouchableOpacity
-        style={[styles.filterButton, filtro === valor && styles.filterSelected]}
-        onPress={() => setFiltro(valor)}
-      >
-        <Text style={[styles.filterText, filtro === valor && styles.filterTextSelected]}>{nome}</Text>
-      </TouchableOpacity>
-    );
+  // ─── Desloga o usuário ───────────────────────────────────────
+  async function sairDaConta() {
+    await AsyncStorage.multiRemove(['@usuario_id', '@usuario_nome', '@usuario_email']);
+    setModalPerfil(false);
+    router.replace('/');
   }
 
-  function mostrarTransacao(item: any) {
-    const receita = item.tipo === 'receita';
-    return (
-      <View style={styles.transactionItem} key={item.id}>
-        <View style={styles.iconBox}>
-          <Ionicons
-            name={receita ? 'wallet-outline' : 'arrow-down-outline'}
-            size={20}
-            color={receita ? '#22C55E' : '#EF4444'}
-          />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.transactionTitle}>{item.categoriaLabel}</Text>
-          <Text style={styles.transactionDate}>{item.data.toLocaleDateString('pt-BR')}</Text>
-        </View>
-        <Text style={[styles.transactionValue, { color: receita ? '#22C55E' : '#EF4444' }]} numberOfLines={1} adjustsFontSizeToFit>
-          {receita ? '+' : '-'}{item.valorFormatado}
-        </Text>
-      </View>
-    );
+  // ─── Limpa o formulário de transação e fecha o modal ─────────
+  function limparFormulario() {
+    setValor('');
+    setDescricao('');
+    setCategoriaSelecionada(null);
+    setTipo('despesa');
+    setModalTransacao(false);
   }
 
-  function mostrarMeta(item: any) {
-    const porcentagem = saldoAtual <= 0 ? 0 : Math.min((saldoAtual / item.valor) * 100, 100);
-    const falta = item.valor - saldoAtual;
-    const metaFeita = porcentagem >= 100;
-    return (
-      <View style={styles.metaCard} key={item.id}>
-        <View style={styles.metaTop}>
-          <View>
-            <Text style={styles.transactionTitle}>{item.nome}</Text>
-            <Text style={[styles.metaStatus, { color: metaFeita ? '#22C55E' : '#FACC15' }]}>
-              {metaFeita ? 'Meta alcançada' : 'Em andamento'}
-            </Text>
-          </View>
-          <TouchableOpacity onPress={() => excluirMeta(item.id)}>
-            <Ionicons name="trash-outline" size={22} color="#EF4444" />
-          </TouchableOpacity>
-        </View>
-        <Text style={styles.transactionDate}>Objetivo: {formatarMoeda(item.valor)}</Text>
-        <Text style={styles.transactionDate}>Saldo atual: {formatarMoeda(saldoAtual)}</Text>
-        {!metaFeita && <Text style={styles.transactionDate}>Falta: {formatarMoeda(falta)}</Text>}
-        <View style={styles.progressBack}>
-          <View style={[styles.progressFront, { width: `${porcentagem}%` }]} />
-        </View>
-        <Text style={[styles.transactionDate, { marginTop: 10 }]}>{porcentagem.toFixed(0)}% concluído</Text>
-        {metaFeita && (
-          <View style={styles.metaConcluida}>
-            <Text style={styles.metaConcluidaTexto}>Meta alcançada. Você atingiu esse objetivo.</Text>
-          </View>
-        )}
-      </View>
-    );
+  // ─── Formata valor enquanto digita ───────────────────────────
+  // Ex: digita "15000" → mostra "R$ 150,00"
+  function formatarValorInput(texto: string) {
+    const somenteNumeros = texto.replace(/\D/g, '');
+    if (!somenteNumeros) return '';
+    const numero = parseInt(somenteNumeros) / 100;
+    return `R$ ${numero.toFixed(2).replace('.', ',')}`;
   }
 
+  // ─── Converte texto formatado para número ─────────────────────
+  // Ex: "R$ 150,00" → 150.00
+  function textoParaNumero(texto: string): number {
+    return parseFloat(texto.replace('R$ ', '').replace(',', '.') || '0');
+  }
+
+  // ─── Formata número para moeda brasileira ────────────────────
+  function formatarMoeda(valor: number) {
+    return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  }
+
+  // ─── Cálculos do resumo financeiro ───────────────────────────
+  const receitas = totalReceitas();
+  const despesas = totalDespesas();
+  const saldoAtual = saldo();
+
+  // Lista de transações ordenada da mais nova para a mais antiga
+  const listaOrdenada = [...transacoes].sort((a, b) => b.data.getTime() - a.data.getTime());
+
+  // Aplica o filtro selecionado
+  const listaFiltrada = listaOrdenada.filter((item) => {
+    if (filtro === 'todos') return true;
+    return item.tipo === filtro;
+  });
+
+  // Pega só o primeiro nome para o cumprimento
+  const primeiroNome = nomeUsuario.split(' ')[0];
+
+  // Iniciais para o avatar (ex: "João Silva" → "JS")
+  const iniciaisUsuario = nomeUsuario
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((n) => n[0].toUpperCase())
+    .join('');
+
+  // Mês atual formatado (ex: "Junho 2026")
+  const mesAtual = new Date().toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
+  const mesFormatado = mesAtual.charAt(0).toUpperCase() + mesAtual.slice(1);
+
+  // Lista de categorias filtradas pelo tipo selecionado no formulário
+  const categoriasFiltradas = categoriasDoBanco.filter((c) => c.tipo === tipo);
+
+  // ─── Renderização da tela ─────────────────────────────────────
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
+      <View style={styles.conteudo}>
 
-        {/* ─── Header ─── */}
-        <View style={styles.header}>
-          <View style={styles.brandArea}>
-            <View style={styles.logoContainer}>
+        {/* ── Cabeçalho com logo e avatar ── */}
+        <View style={styles.cabecalho}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={styles.logoBox}>
               <Image
                 source={require('../../src/assets/logo.png')}
-                style={styles.logoImage}
+                style={{ width: 20, height: 20, tintColor: '#fff' }}
                 resizeMode="contain"
               />
             </View>
-            <Text style={styles.logoText}>GestorFin</Text>
+            <Text style={styles.logoTexto}>GestorFin</Text>
           </View>
 
-          {/* Botão do perfil — abre o modal */}
-          <TouchableOpacity
-            style={styles.profileCircle}
-            onPress={() => setModalPerfil(true)}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.profileText}>{iniciaisUsuario}</Text>
+          {/* Avatar — abre o modal de perfil */}
+          <TouchableOpacity style={styles.avatar} onPress={() => setModalPerfil(true)}>
+            <Text style={styles.avatarTexto}>{iniciaisUsuario}</Text>
           </TouchableOpacity>
         </View>
 
-        {/* ─── Listagem ─── */}
+        {/* ── Conteúdo rolável ── */}
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 140 }}>
-          {abaAtiva === 'inicio' ? (
+
+          {/* ── ABA INÍCIO ── */}
+          {abaAtiva === 'inicio' && (
             <>
-              <Text style={styles.helloText}>Olá, {primeiroNome} · {mesFormatado}</Text>
-              <Text style={[styles.balance, { color: saldoAtual >= 0 ? '#22C55E' : '#EF4444' }]} numberOfLines={1} adjustsFontSizeToFit>
+              {/* Saudação e mês */}
+              <Text style={styles.saudacao}>Olá, {primeiroNome} · {mesFormatado}</Text>
+
+              {/* Saldo principal */}
+              <Text
+                style={[styles.saldo, { color: saldoAtual >= 0 ? CORES.verde : CORES.vermelho }]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
                 {formatarMoeda(saldoAtual)}
               </Text>
-              <Text style={styles.balanceLabel}>valor líquido do mês</Text>
+              <Text style={styles.labelSaldo}>saldo do mês</Text>
 
-              <View style={styles.cardsRow}>
-                <View style={styles.card}>
-                  <View style={styles.cardTop}>
-                    <View style={styles.dotGreen} />
-                    <Text style={styles.cardLabel}>Renda</Text>
+              {/* Cartões de receita e despesa */}
+              <View style={styles.filhaCartoes}>
+                <View style={styles.cartao}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                    <View style={[styles.bolinha, { backgroundColor: CORES.verde }]} />
+                    <Text style={styles.labelCartao}>Receitas</Text>
                   </View>
-                  <Text numberOfLines={1} adjustsFontSizeToFit style={styles.greenText}>{formatarMoeda(receitas)}</Text>
+                  <Text style={[styles.valorCartao, { color: CORES.verde }]} numberOfLines={1} adjustsFontSizeToFit>
+                    {formatarMoeda(receitas)}
+                  </Text>
                 </View>
-                <View style={styles.card}>
-                  <View style={styles.cardTop}>
-                    <View style={styles.dotRed} />
-                    <Text style={styles.cardLabel}>Despesas</Text>
+
+                <View style={styles.cartao}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                    <View style={[styles.bolinha, { backgroundColor: CORES.vermelho }]} />
+                    <Text style={styles.labelCartao}>Despesas</Text>
                   </View>
-                  <Text numberOfLines={1} adjustsFontSizeToFit style={styles.redText}>{formatarMoeda(despesas)}</Text>
+                  <Text style={[styles.valorCartao, { color: CORES.vermelho }]} numberOfLines={1} adjustsFontSizeToFit>
+                    {formatarMoeda(despesas)}
+                  </Text>
                 </View>
               </View>
 
-              <View style={styles.transactionsHeader}>
-                <Text style={styles.sectionTitle}>TRANSAÇÕES</Text>
+              {/* Título da seção de transações */}
+              <Text style={styles.tituloSecao}>TRANSAÇÕES</Text>
+
+              {/* Botões de filtro */}
+              <View style={styles.areaFiltro}>
+                {(['todos', 'receita', 'despesa'] as const).map((opcao) => (
+                  <TouchableOpacity
+                    key={opcao}
+                    style={[styles.botaoFiltro, filtro === opcao && styles.botaoFiltroAtivo]}
+                    onPress={() => setFiltro(opcao)}
+                  >
+                    <Text style={[styles.textoFiltro, filtro === opcao && styles.textoFiltroAtivo]}>
+                      {opcao === 'todos' ? 'Todos' : opcao === 'receita' ? 'Receitas' : 'Despesas'}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
               </View>
 
-              <View style={styles.filterArea}>
-                <BotaoFiltro nome="Todos" valor="todos" />
-                <BotaoFiltro nome="Receitas" valor="receita" />
-                <BotaoFiltro nome="Despesas" valor="despesa" />
-              </View>
+              {/* Mensagem quando não há transações */}
+              {listaFiltrada.length === 0 && (
+                <Text style={styles.textoVazio}>Nenhuma transação encontrada.</Text>
+              )}
 
-              {listaFiltrada.length === 0 && <Text style={styles.emptyText}>Nenhuma transação encontrada.</Text>}
-              {listaFiltrada.slice(0, 5).map(mostrarTransacao)}
+              {/* Lista de transações (máximo 10) */}
+              {listaFiltrada.slice(0, 10).map((item) => (
+                <View style={styles.itemTransacao} key={item.id}>
+                  <View style={styles.iconeTransacao}>
+                    <Ionicons
+                      name={item.tipo === 'receita' ? 'wallet-outline' : 'arrow-down-outline'}
+                      size={20}
+                      color={item.tipo === 'receita' ? CORES.verde : CORES.vermelho}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.nomeTransacao}>{item.categoriaLabel}</Text>
+                    <Text style={styles.dataTransacao}>{item.data.toLocaleDateString('pt-BR')}</Text>
+                  </View>
+                  <Text
+                    style={[styles.valorTransacao, { color: item.tipo === 'receita' ? CORES.verde : CORES.vermelho }]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                  >
+                    {item.tipo === 'receita' ? '+' : '-'}{item.valorFormatado}
+                  </Text>
+                </View>
+              ))}
             </>
-          ) : (
+          )}
+
+          {/* ── ABA METAS ── */}
+          {abaAtiva === 'metas' && (
             <>
-              <View style={styles.transactionsHeader}>
-                <Text style={styles.historyTitle}>Metas</Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <Text style={styles.tituloAba}>Metas</Text>
                 <TouchableOpacity onPress={() => setModalMeta(true)}>
-                  <Text style={styles.viewAll}>Nova meta</Text>
+                  <Text style={{ color: CORES.azul, fontSize: 14, fontWeight: 'bold' }}>Nova meta</Text>
                 </TouchableOpacity>
               </View>
-              <Text style={styles.phrase}>Acompanhe suas metas usando o saldo atual do aplicativo.</Text>
+
+              <Text style={styles.descricaoAba}>
+                Acompanhe suas metas usando o saldo atual do app.
+              </Text>
+
+              {/* Quando não há metas */}
               {metas.length === 0 && (
-                <View style={styles.emptyMetaBox}>
-                  <Text style={styles.emptyText}>Nenhuma meta criada ainda.</Text>
-                  <TouchableOpacity style={styles.firstMetaButton} onPress={() => setModalMeta(true)}>
-                    <Text style={styles.saveButtonText}>Criar primeira meta</Text>
+                <View style={styles.caixaVazioMeta}>
+                  <Text style={styles.textoVazio}>Nenhuma meta criada ainda.</Text>
+                  <TouchableOpacity style={styles.botaoPrimeiraMeta} onPress={() => setModalMeta(true)}>
+                    <Text style={{ color: '#fff', fontWeight: 'bold' }}>Criar primeira meta</Text>
                   </TouchableOpacity>
                 </View>
               )}
-              {metas.map(mostrarMeta)}
+
+              {/* Lista de metas */}
+              {metas.map((meta) => {
+                // Calcula o progresso da meta em relação ao saldo atual
+                const progresso = saldoAtual <= 0 ? 0 : Math.min((saldoAtual / meta.valor) * 100, 100);
+                const falta = meta.valor - saldoAtual;
+                const concluida = progresso >= 100;
+
+                return (
+                  <View style={styles.cartaoMeta} key={meta.id}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <View>
+                        <Text style={styles.nomeTransacao}>{meta.nome}</Text>
+                        <Text style={{ color: concluida ? CORES.verde : '#FACC15', fontSize: 12, marginTop: 2, fontWeight: 'bold' }}>
+                          {concluida ? 'Meta alcançada!' : 'Em andamento'}
+                        </Text>
+                      </View>
+                      <TouchableOpacity onPress={() => excluirMeta(meta.id)}>
+                        <Ionicons name="trash-outline" size={22} color={CORES.vermelho} />
+                      </TouchableOpacity>
+                    </View>
+
+                    <Text style={styles.dataTransacao}>Objetivo: {formatarMoeda(meta.valor)}</Text>
+                    <Text style={styles.dataTransacao}>Saldo atual: {formatarMoeda(saldoAtual)}</Text>
+                    {!concluida && <Text style={styles.dataTransacao}>Falta: {formatarMoeda(falta)}</Text>}
+
+                    {/* Barra de progresso */}
+                    <View style={styles.barraFundo}>
+                      <View style={[styles.barraProgresso, { width: `${progresso}%` }]} />
+                    </View>
+                    <Text style={[styles.dataTransacao, { marginTop: 8 }]}>{progresso.toFixed(0)}% concluído</Text>
+
+                    {concluida && (
+                      <View style={styles.caixaMetaConcluida}>
+                        <Text style={{ color: CORES.verde, fontSize: 12, textAlign: 'center', fontWeight: 'bold' }}>
+                          Parabéns! Você atingiu esse objetivo.
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
             </>
           )}
         </ScrollView>
 
-        {/* ─── Bottom Navigation ─── */}
-        <View style={styles.bottomBar}>
-          <TouchableOpacity style={styles.bottomButton} onPress={() => setAbaAtiva('inicio')}>
-            <FontAwesome5 name="th-large" size={20} color={abaAtiva === 'inicio' ? '#3B82F6' : '#5C6F91'} />
-            <Text style={[styles.bottomText, { color: abaAtiva === 'inicio' ? '#3B82F6' : '#5C6F91' }]}>Início</Text>
+        {/* ── Barra de navegação inferior ── */}
+        <View style={styles.barraInferior}>
+          <TouchableOpacity style={styles.botaoNav} onPress={() => setAbaAtiva('inicio')}>
+            <FontAwesome5 name="th-large" size={20} color={abaAtiva === 'inicio' ? CORES.azul : CORES.textoEscuro} />
+            <Text style={[styles.textoNav, { color: abaAtiva === 'inicio' ? CORES.azul : CORES.textoEscuro }]}>Início</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}>
-            <FontAwesome5 name="plus" size={24} color="#FFFFFF" />
+
+          {/* Botão central de adicionar transação */}
+          <TouchableOpacity style={styles.botaoAdicionar} onPress={() => setModalTransacao(true)}>
+            <FontAwesome5 name="plus" size={24} color="#FFF" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.bottomButton} onPress={() => setAbaAtiva('metas')}>
-            <Ionicons name="flag-outline" size={22} color={abaAtiva === 'metas' ? '#3B82F6' : '#5C6F91'} />
-            <Text style={[styles.bottomText, { color: abaAtiva === 'metas' ? '#3B82F6' : '#5C6F91' }]}>Metas</Text>
+
+          <TouchableOpacity style={styles.botaoNav} onPress={() => setAbaAtiva('metas')}>
+            <Ionicons name="flag-outline" size={22} color={abaAtiva === 'metas' ? CORES.azul : CORES.textoEscuro} />
+            <Text style={[styles.textoNav, { color: abaAtiva === 'metas' ? CORES.azul : CORES.textoEscuro }]}>Metas</Text>
           </TouchableOpacity>
         </View>
 
-        {/* ─── Modal Perfil ─── */}
+        {/* ── Modal: Perfil do usuário ── */}
         <PerfilModal
           visible={modalPerfil}
           onClose={() => setModalPerfil(false)}
@@ -395,30 +515,90 @@ export default function Home() {
           onSair={sairDaConta}
         />
 
-        {/* ─── Modal Metas ─── */}
-        <Modal visible={modalMeta} transparent animationType="slide">
-          <View style={styles.modalOverlay}>
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
+        {/* ── Modal: Nova Transação ── */}
+        <Modal visible={modalTransacao} transparent animationType="slide">
+          <View style={styles.overlayModal}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ width: '100%' }}>
               <ScrollView keyboardShouldPersistTaps="handled">
-                <View style={styles.modalContent}>
-                  <View style={styles.modalLine} />
-                  <Text style={styles.modalTitle}>Nova Meta</Text>
-                  <Text style={styles.formTitle}>Sugestões</Text>
-                  <View style={styles.sugestoesArea}>
-                    {sugestoes.map((item) => (
-                      <TouchableOpacity key={item} style={styles.sugestaoButton} onPress={() => setMetaNome(item)}>
-                        <Text style={styles.sugestaoText}>{item}</Text>
+                <View style={styles.conteudoModal}>
+                  <View style={styles.alcaModal} />
+                  <Text style={styles.tituloModal}>Nova Transação</Text>
+
+                  {/* Seleção do tipo: Receita ou Despesa */}
+                  <View style={styles.filhaTipo}>
+                    <TouchableOpacity
+                      style={[styles.botaoTipo, tipo === 'receita' && { backgroundColor: CORES.verde, borderColor: CORES.verde }]}
+                      onPress={() => setTipo('receita')}
+                    >
+                      <Text style={[styles.textoTipo, tipo === 'receita' && { color: '#fff' }]}>Receita</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.botaoTipo, tipo === 'despesa' && { backgroundColor: CORES.vermelho, borderColor: CORES.vermelho }]}
+                      onPress={() => setTipo('despesa')}
+                    >
+                      <Text style={[styles.textoTipo, tipo === 'despesa' && { color: '#fff' }]}>Despesa</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Seleção de categoria — lista de botões clicáveis */}
+                  <Text style={styles.labelCampo}>Categoria</Text>
+                  <View style={styles.gradeCategorias}>
+                    {categoriasFiltradas.map((cat) => (
+                      <TouchableOpacity
+                        key={cat.id}
+                        style={[
+                          styles.botaoCategoria,
+                          categoriaSelecionada?.id === cat.id && styles.botaoCategoriaAtivo,
+                        ]}
+                        onPress={() => setCategoriaSelecionada(cat)}
+                      >
+                        <Text style={[
+                          styles.textoCategoria,
+                          categoriaSelecionada?.id === cat.id && styles.textoCategoriaAtivo,
+                        ]}>
+                          {cat.nome}
+                        </Text>
                       </TouchableOpacity>
                     ))}
                   </View>
-                  <TextInput style={styles.input} placeholder="Nome da meta" placeholderTextColor="#9ca3af" value={metaNome} onChangeText={setMetaNome} />
-                  <TextInput style={styles.input} placeholder="Valor a atingir (R$)" placeholderTextColor="#9ca3af" keyboardType="numeric" value={metaValor} onChangeText={setMetaValor} />
-                  <View style={styles.botoesModalRow}>
-                    <TouchableOpacity style={styles.btnCancelar} onPress={() => setModalMeta(false)}>
-                      <Text style={styles.btnCancelarTexto}>Cancelar</Text>
+
+                  {/* Campo de valor com "R$" já visível */}
+                  <Text style={styles.labelCampo}>Valor</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="R$ 0,00"
+                    placeholderTextColor="#6b7280"
+                    keyboardType="numeric"
+                    value={valor}
+                    onChangeText={(t) => setValor(formatarValorInput(t))}
+                  />
+
+                  {/* Campo de descrição (opcional) */}
+                  <Text style={styles.labelCampo}>Descrição (opcional)</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Ex: Almoço com amigos"
+                    placeholderTextColor="#6b7280"
+                    value={descricao}
+                    onChangeText={setDescricao}
+                  />
+
+                  {/* Botões de ação */}
+                  <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
+                    <TouchableOpacity style={styles.botaoCancelar} onPress={limparFormulario} disabled={salvando}>
+                      <Text style={styles.textoCancelar}>Cancelar</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.btnSalvar} onPress={salvarMeta}>
-                      <Text style={styles.saveButtonText}>Salvar Meta</Text>
+
+                    <TouchableOpacity
+                      style={[styles.botaoSalvar, salvando && { opacity: 0.7 }]}
+                      onPress={salvarTransacao}
+                      disabled={salvando}
+                    >
+                      {salvando
+                        ? <ActivityIndicator color="#fff" />
+                        : <Text style={styles.textoSalvar}>Salvar</Text>
+                      }
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -427,35 +607,43 @@ export default function Home() {
           </View>
         </Modal>
 
-        {/* ─── Modal Nova Transação ─── */}
-        <Modal visible={modalVisible} transparent animationType="slide">
-          <View style={styles.modalOverlay}>
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
-              <ScrollView keyboardShouldPersistTaps="handled">
-                <View style={styles.modalContent}>
-                  <View style={styles.modalLine} />
-                  <Text style={styles.modalTitle}>Nova Transação</Text>
-                  <View style={styles.tipoContainer}>
-                    <TouchableOpacity style={[styles.tipoBotao, tipoSelecionado === 'receita' && styles.receitaBg]} onPress={() => setTipoSelecionado('receita')}>
-                      <Text style={[styles.tipoTexto, tipoSelecionado === 'receita' && { color: '#fff' }]}>💰 Receita</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.tipoBotao, tipoSelecionado === 'despesa' && styles.despesaBg]} onPress={() => setTipoSelecionado('despesa')}>
-                      <Text style={[styles.tipoTexto, tipoSelecionado === 'despesa' && { color: '#fff' }]}>💸 Despesa</Text>
-                    </TouchableOpacity>
-                  </View>
-                  <TextInput style={styles.input} placeholder="Categoria (Ex: Salário, Alimentação)" placeholderTextColor="#9ca3af" value={nomeTransacao} onChangeText={setNomeTransacao} />
-                  <TextInput style={styles.input} placeholder="Descrição opcional" placeholderTextColor="#9ca3af" value={descricaoTransacao} onChangeText={setDescricaoTransacao} />
-                  <TextInput style={styles.input} placeholder="Valor (R$)" placeholderTextColor="#9ca3af" keyboardType="numeric" value={valorTransacao} onChangeText={setValorTransacao} />
-                  <View style={styles.botoesModalRow}>
-                    <TouchableOpacity style={styles.btnCancelar} onPress={limparFormulario} disabled={salvando}>
-                      <Text style={styles.btnCancelarTexto}>Cancelar</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.btnSalvar, salvando && { opacity: 0.7 }]} onPress={salvarTransacao} disabled={salvando}>
-                      {salvando ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveButtonText}>Salvar no Banco</Text>}
-                    </TouchableOpacity>
-                  </View>
+        {/* ── Modal: Nova Meta ── */}
+        <Modal visible={modalMeta} transparent animationType="slide">
+          <View style={styles.overlayModal}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ width: '100%' }}>
+              <View style={styles.conteudoModal}>
+                <View style={styles.alcaModal} />
+                <Text style={styles.tituloModal}>Nova Meta</Text>
+
+                <Text style={styles.labelCampo}>Nome da meta</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ex: Viagem, Notebook, Carro..."
+                  placeholderTextColor="#6b7280"
+                  value={nomeMeta}
+                  onChangeText={setNomeMeta}
+                />
+
+                <Text style={styles.labelCampo}>Valor objetivo</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ex: 5000"
+                  placeholderTextColor="#6b7280"
+                  keyboardType="numeric"
+                  value={valorMeta}
+                  onChangeText={setValorMeta}
+                />
+
+                <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
+                  <TouchableOpacity style={styles.botaoCancelar} onPress={() => setModalMeta(false)}>
+                    <Text style={styles.textoCancelar}>Cancelar</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity style={styles.botaoSalvar} onPress={salvarMeta}>
+                    <Text style={styles.textoSalvar}>Salvar Meta</Text>
+                  </TouchableOpacity>
                 </View>
-              </ScrollView>
+              </View>
             </KeyboardAvoidingView>
           </View>
         </Modal>
@@ -465,74 +653,397 @@ export default function Home() {
   );
 }
 
+// ─── Estilos ────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F172A' },
-  content: { flex: 1, paddingHorizontal: 20, paddingTop: 10 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25 },
-  brandArea: { flexDirection: 'row', alignItems: 'center' },
-  logoContainer: { width: 35, height: 35, backgroundColor: '#3B82F6', borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
-  logoImage: { width: 20, height: 20, tintColor: '#fff' },
-  logoText: { fontSize: 20, fontWeight: 'bold', color: '#FFF' },
-  profileCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#1E293B', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#334155' },
-  profileText: { color: '#FFF', fontWeight: 'bold', fontSize: 14 },
-  helloText: { color: '#94A3B8', fontSize: 14, marginBottom: 5 },
-  balance: { color: '#FFF', fontSize: 36, fontWeight: 'bold', marginBottom: 2 },
-  balanceLabel: { color: '#64748B', fontSize: 12, marginBottom: 25 },
-  cardsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 30 },
-  card: { flex: 1, backgroundColor: '#1E293B', borderRadius: 16, padding: 16, marginHorizontal: 5, borderWidth: 1, borderColor: '#334155' },
-  cardTop: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  dotGreen: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#22C55E', marginRight: 8 },
-  dotRed: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#EF4444', marginRight: 8 },
-  cardLabel: { color: '#94A3B8', fontSize: 13 },
-  greenText: { color: '#22C55E', fontSize: 18, fontWeight: 'bold' },
-  redText: { color: '#EF4444', fontSize: 18, fontWeight: 'bold' },
-  transactionsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
-  sectionTitle: { color: '#64748B', fontSize: 12, fontWeight: 'bold', letterSpacing: 1 },
-  historyTitle: { color: '#FFF', fontSize: 18, fontWeight: 'bold' },
-  viewAll: { color: '#3B82F6', fontSize: 14, fontWeight: 'bold' },
-  phrase: { color: '#94A3B8', fontSize: 13, marginBottom: 20 },
-  filterArea: { flexDirection: 'row', marginBottom: 20, gap: 10 },
-  filterButton: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 20, backgroundColor: '#1E293B', borderWidth: 1, borderColor: '#334155' },
-  filterSelected: { backgroundColor: '#3B82F6', borderColor: '#3B82F6' },
-  filterText: { color: '#94A3B8', fontSize: 13 },
-  filterTextSelected: { color: '#FFF', fontWeight: 'bold' },
-  emptyText: { color: '#64748B', textAlign: 'center', marginTop: 20 },
-  emptyMetaBox: { backgroundColor: '#1E293B', padding: 20, borderRadius: 16, alignItems: 'center', borderWidth: 1, borderColor: '#334155', marginTop: 20 },
-  firstMetaButton: { marginTop: 15, backgroundColor: '#3B82F6', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8 },
-  transactionItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1E293B', padding: 16, borderRadius: 16, marginBottom: 10, borderWidth: 1, borderColor: '#334155' },
-  iconBox: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#0F172A', justifyContent: 'center', alignItems: 'center', marginRight: 15 },
-  transactionTitle: { color: '#FFF', fontSize: 15, fontWeight: 'bold' },
-  transactionDate: { color: '#64748B', fontSize: 12, marginTop: 4 },
-  transactionValue: { fontSize: 15, fontWeight: 'bold', maxWidth: 100 },
-  metaCard: { backgroundColor: '#1E293B', padding: 16, borderRadius: 16, marginBottom: 15, borderWidth: 1, borderColor: '#334155' },
-  metaTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 },
-  metaStatus: { fontSize: 12, marginTop: 4, fontWeight: 'bold' },
-  progressBack: { height: 8, backgroundColor: '#0F172A', borderRadius: 4, marginTop: 15, overflow: 'hidden' },
-  progressFront: { height: '100%', backgroundColor: '#3B82F6', borderRadius: 4 },
-  metaConcluida: { marginTop: 15, padding: 10, backgroundColor: 'rgba(34, 197, 94, 0.1)', borderRadius: 8, borderWidth: 1, borderColor: '#22C55E' },
-  metaConcluidaTexto: { color: '#22C55E', fontSize: 12, textAlign: 'center', fontWeight: 'bold' },
-  bottomBar: { position: 'absolute', bottom: 20, left: 20, right: 20, backgroundColor: '#1E293B', flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', paddingVertical: 15, borderRadius: 30, borderWidth: 1, borderColor: '#334155' },
-  bottomButton: { alignItems: 'center', flex: 1 },
-  bottomText: { fontSize: 11, marginTop: 4, fontWeight: '600' },
-  addButton: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#3B82F6', justifyContent: 'center', alignItems: 'center', top: -20, shadowColor: '#3B82F6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
-  keyboardView: { width: '100%' },
-  modalContent: { backgroundColor: '#1E293B', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, minHeight: 400 },
-  modalLine: { width: 40, height: 4, backgroundColor: '#334155', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
-  modalTitle: { color: '#FFF', fontSize: 20, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
-  formTitle: { color: '#94A3B8', fontSize: 14, marginBottom: 10 },
-  sugestoesArea: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
-  sugestaoButton: { backgroundColor: '#0F172A', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: '#334155' },
-  sugestaoText: { color: '#94A3B8', fontSize: 13 },
-  input: { backgroundColor: '#0F172A', color: '#FFF', padding: 15, borderRadius: 12, marginBottom: 15, borderWidth: 1, borderColor: '#334155', fontSize: 16 },
-  tipoContainer: { flexDirection: 'row', gap: 10, marginBottom: 20 },
-  tipoBotao: { flex: 1, padding: 15, borderRadius: 12, alignItems: 'center', backgroundColor: '#0F172A', borderWidth: 1, borderColor: '#334155' },
-  receitaBg: { backgroundColor: '#22C55E', borderColor: '#22C55E' },
-  despesaBg: { backgroundColor: '#EF4444', borderColor: '#EF4444' },
-  tipoTexto: { color: '#94A3B8', fontWeight: 'bold', fontSize: 15 },
-  botoesModalRow: { flexDirection: 'row', gap: 15, marginTop: 10 },
-  btnCancelar: { flex: 1, padding: 16, borderRadius: 12, backgroundColor: '#0F172A', alignItems: 'center', borderWidth: 1, borderColor: '#334155' },
-  btnCancelarTexto: { color: '#94A3B8', fontWeight: 'bold', fontSize: 16 },
-  btnSalvar: { flex: 1, padding: 16, borderRadius: 12, backgroundColor: '#3B82F6', alignItems: 'center' },
-  saveButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
+  container: {
+    flex: 1,
+    backgroundColor: CORES.fundo,
+  },
+  conteudo: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+  },
+
+  // Cabeçalho
+  cabecalho: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  logoBox: {
+    width: 35,
+    height: 35,
+    backgroundColor: CORES.azul,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  logoTexto: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: CORES.textoClaro,
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: CORES.cartao,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: CORES.borda,
+  },
+  avatarTexto: {
+    color: '#FFF',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+
+  // Saudação e saldo
+  saudacao: {
+    color: CORES.textoMedio,
+    fontSize: 14,
+    marginBottom: 6,
+  },
+  saldo: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  labelSaldo: {
+    color: CORES.textoEscuro,
+    fontSize: 12,
+    marginBottom: 24,
+  },
+
+  // Cartões de receita/despesa
+  filhaCartoes: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 28,
+    gap: 12,
+  },
+  cartao: {
+    flex: 1,
+    backgroundColor: CORES.cartao,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: CORES.borda,
+  },
+  bolinha: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 8,
+  },
+  labelCartao: {
+    color: CORES.textoMedio,
+    fontSize: 13,
+  },
+  valorCartao: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+
+  // Seção de transações
+  tituloSecao: {
+    color: CORES.textoEscuro,
+    fontSize: 12,
+    fontWeight: 'bold',
+    letterSpacing: 1,
+    marginBottom: 14,
+  },
+
+  // Filtros
+  areaFiltro: {
+    flexDirection: 'row',
+    marginBottom: 18,
+    gap: 10,
+  },
+  botaoFiltro: {
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    backgroundColor: CORES.cartao,
+    borderWidth: 1,
+    borderColor: CORES.borda,
+  },
+  botaoFiltroAtivo: {
+    backgroundColor: CORES.azul,
+    borderColor: CORES.azul,
+  },
+  textoFiltro: {
+    color: CORES.textoMedio,
+    fontSize: 13,
+  },
+  textoFiltroAtivo: {
+    color: '#FFF',
+    fontWeight: 'bold',
+  },
+
+  // Item de transação
+  itemTransacao: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: CORES.cartao,
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: CORES.borda,
+  },
+  iconeTransacao: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: CORES.fundo,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  nomeTransacao: {
+    color: CORES.textoClaro,
+    fontSize: 15,
+    fontWeight: 'bold',
+  },
+  dataTransacao: {
+    color: CORES.textoEscuro,
+    fontSize: 12,
+    marginTop: 4,
+  },
+  valorTransacao: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    maxWidth: 110,
+  },
+
+  // Texto quando lista está vazia
+  textoVazio: {
+    color: CORES.textoEscuro,
+    textAlign: 'center',
+    marginTop: 20,
+  },
+
+  // Aba de metas
+  tituloAba: {
+    color: CORES.textoClaro,
+    fontSize: 22,
+    fontWeight: 'bold',
+  },
+  descricaoAba: {
+    color: CORES.textoMedio,
+    fontSize: 13,
+    marginBottom: 20,
+  },
+  caixaVazioMeta: {
+    backgroundColor: CORES.cartao,
+    padding: 24,
+    borderRadius: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: CORES.borda,
+    marginTop: 10,
+  },
+  botaoPrimeiraMeta: {
+    marginTop: 14,
+    backgroundColor: CORES.azul,
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 10,
+  },
+  cartaoMeta: {
+    backgroundColor: CORES.cartao,
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: CORES.borda,
+  },
+  barraFundo: {
+    height: 8,
+    backgroundColor: CORES.fundo,
+    borderRadius: 4,
+    marginTop: 14,
+    overflow: 'hidden',
+  },
+  barraProgresso: {
+    height: '100%',
+    backgroundColor: CORES.azul,
+    borderRadius: 4,
+  },
+  caixaMetaConcluida: {
+    marginTop: 12,
+    padding: 10,
+    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: CORES.verde,
+  },
+
+  // Barra de navegação inferior
+  barraInferior: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+    backgroundColor: CORES.cartao,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderRadius: 30,
+    borderWidth: 1,
+    borderColor: CORES.borda,
+  },
+  botaoNav: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  textoNav: {
+    fontSize: 11,
+    marginTop: 4,
+    fontWeight: '600',
+  },
+  botaoAdicionar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: CORES.azul,
+    justifyContent: 'center',
+    alignItems: 'center',
+    top: -20,
+    shadowColor: CORES.azul,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+
+  // Modal
+  overlayModal: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
+  conteudoModal: {
+    backgroundColor: CORES.cartao,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    minHeight: 400,
+  },
+  alcaModal: {
+    width: 40,
+    height: 4,
+    backgroundColor: CORES.borda,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  tituloModal: {
+    color: CORES.textoClaro,
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+
+  // Seleção de tipo (Receita / Despesa)
+  filhaTipo: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 20,
+  },
+  botaoTipo: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    backgroundColor: CORES.fundo,
+    borderWidth: 1,
+    borderColor: CORES.borda,
+  },
+  textoTipo: {
+    color: CORES.textoMedio,
+    fontWeight: 'bold',
+    fontSize: 15,
+  },
+
+  // Grade de categorias
+  labelCampo: {
+    color: CORES.textoMedio,
+    fontSize: 13,
+    marginBottom: 8,
+    marginTop: 4,
+  },
+  gradeCategorias: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  botaoCategoria: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    backgroundColor: CORES.fundo,
+    borderWidth: 1,
+    borderColor: CORES.borda,
+  },
+  botaoCategoriaAtivo: {
+    backgroundColor: CORES.azul,
+    borderColor: CORES.azul,
+  },
+  textoCategoria: {
+    color: CORES.textoMedio,
+    fontSize: 13,
+  },
+  textoCategoriaAtivo: {
+    color: '#FFF',
+    fontWeight: 'bold',
+  },
+
+  // Campo de texto (input)
+  input: {
+    backgroundColor: CORES.fundo,
+    color: CORES.textoClaro,
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: CORES.borda,
+    fontSize: 16,
+  },
+
+  // Botões de ação do modal
+  botaoCancelar: {
+    flex: 1,
+    padding: 15,
+    borderRadius: 12,
+    backgroundColor: CORES.fundo,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: CORES.borda,
+  },
+  textoCancelar: {
+    color: CORES.textoMedio,
+    fontWeight: 'bold',
+    fontSize: 15,
+  },
+  botaoSalvar: {
+    flex: 1,
+    padding: 15,
+    borderRadius: 12,
+    backgroundColor: CORES.azul,
+    alignItems: 'center',
+  },
+  textoSalvar: {
+    color: '#FFF',
+    fontWeight: 'bold',
+    fontSize: 15,
+  },
 });

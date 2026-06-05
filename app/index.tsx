@@ -1,3 +1,10 @@
+// app/index.tsx
+// ─────────────────────────────────────────────────────────────
+// Tela de Login — primeira tela que o usuário vê.
+// Envia email e senha para o backend e, se correto,
+// salva os dados do usuário e vai para a tela principal.
+// ─────────────────────────────────────────────────────────────
+
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -10,121 +17,142 @@ import {
   Alert,
   Image,
   ActivityIndicator,
+  StatusBar,
 } from 'react-native';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { StatusBar } from 'react-native';
 
-import { estilosLogin } from '../src/styles/_estilosLogin';
-import { estilosGlobais } from '../src/componentes/estilosGlobais';
-
-const API_URL = 'https://reimagined-enigma-wvrrx4xrq599cgjx6-8080.app.github.dev';
+import { estilosLogin } from '../src/styles/estilosLogin';
+import { estilosGlobais } from '../src/styles/estilosGlobais';
+import { API_URL } from '../src/config';
 
 export default function TelaDeLogin() {
-  const [email, definirEmail]             = useState<string>('');
-  const [senha, definirSenha]             = useState<string>('');
-  const [carregando, setCarregando]       = useState<boolean>(false);
-  const [senhaVisivel, setSenhaVisivel]   = useState<boolean>(false); // ← olhinho
+  // Estado dos campos do formulário
+  const [email, setEmail] = useState('');
+  const [senha, setSenha] = useState('');
+
+  // Estado de controle da tela
+  const [carregando, setCarregando] = useState(false);
+  const [senhaVisivel, setSenhaVisivel] = useState(false);
+
   const router = useRouter();
 
+  // Configura a barra de status para ficar transparente sobre a imagem de fundo
   useEffect(() => {
     StatusBar.setBarStyle('light-content');
     StatusBar.setBackgroundColor('transparent');
     StatusBar.setTranslucent(true);
   }, []);
 
-  const realizarLogin = async () => {
+  // Função chamada ao pressionar "Entrar"
+  async function realizarLogin() {
+    // Verifica se os campos foram preenchidos
     if (!email || !senha) {
       Alert.alert('Atenção', 'Por favor, preencha seu e-mail e senha.');
       return;
     }
+
     setCarregando(true);
+
     try {
+      // Envia o email e senha para o backend
       const resposta = await fetch(`${API_URL}/usuarios/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: email.toLowerCase().trim(),
-          senha,
+          senha: senha,
         }),
       });
+
       const dados = await resposta.json();
+
+      // Se o servidor retornar 401, as credenciais estão erradas
       if (resposta.status === 401) {
         Alert.alert('Atenção', 'E-mail ou senha inválidos.');
         return;
       }
+
+      // Se houver outro erro
       if (!resposta.ok) {
-        Alert.alert('Erro', dados.mensagem || 'Não foi possível fazer login. Tente novamente.');
+        Alert.alert('Erro', dados.mensagem || 'Não foi possível fazer login.');
         return;
       }
-      await AsyncStorage.setItem('@usuario_id', dados.id);
+
+      // Login OK! Salva os dados do usuário para usar em outras telas
+      await AsyncStorage.setItem('@usuario_id', String(dados.id));
       await AsyncStorage.setItem('@usuario_nome', dados.nome);
       await AsyncStorage.setItem('@usuario_email', dados.email);
+
+      // Vai para a tela principal
       router.replace('/(tabs)/home');
+
     } catch (erro) {
+      // Erro de conexão (backend fora do ar, URL errada, etc.)
       Alert.alert(
         'Erro de conexão',
-        'Não foi possível conectar ao servidor.\nVerifique se o back-end está rodando e se a URL do Codespace está correta.'
+        'Não foi possível conectar ao servidor.\nVerifique se o backend está rodando.'
       );
     } finally {
       setCarregando(false);
     }
-  };
+  }
 
   return (
     <ImageBackground
       source={require('../src/assets/Fundo.png')}
       style={estilosLogin.imagemFundo}
     >
+      {/* Camada escura para melhorar legibilidade */}
       <View style={estilosLogin.peliculaEscura}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={estilosLogin.areaPrincipal}
         >
+          {/* Cartão de login */}
           <View style={estilosLogin.cartaoLogin}>
 
+            {/* Logo do app */}
             <View style={estilosLogin.iconeTopo}>
               <Image
                 source={require('../src/assets/logo.png')}
-                style={estilosLogin.iconeTopo}
-                height={210}
-                width={210}
+                style={{ width: 110, height: 110 }}
                 resizeMode="contain"
               />
             </View>
 
-            <Text style={estilosGlobais.tituloPrincipal}></Text>
+            {/* Subtítulo */}
             <Text style={estilosGlobais.subtitulo}>Controle seu futuro financeiro.</Text>
 
-            {/* EMAIL */}
+            {/* Campo de email */}
             <View style={estilosGlobais.grupoEntrada}>
               <FontAwesome5 name="envelope" size={16} color="#9ca3af" style={estilosGlobais.iconeEspacamento} />
               <TextInput
                 style={estilosGlobais.campoTexto}
                 placeholder="Seu e-mail"
+                placeholderTextColor="#6b7280"
                 keyboardType="email-address"
                 autoCapitalize="none"
                 value={email}
-                onChangeText={definirEmail}
+                onChangeText={setEmail}
               />
             </View>
 
-            {/* SENHA com olhinho */}
+            {/* Campo de senha com botão de mostrar/ocultar */}
             <View style={estilosGlobais.grupoEntrada}>
               <FontAwesome5 name="lock" size={16} color="#9ca3af" style={estilosGlobais.iconeEspacamento} />
               <TextInput
                 style={[estilosGlobais.campoTexto, { flex: 1 }]}
                 placeholder="Sua senha"
+                placeholderTextColor="#6b7280"
                 secureTextEntry={!senhaVisivel}
                 value={senha}
-                onChangeText={definirSenha}
+                onChangeText={setSenha}
               />
-              <TouchableOpacity
-                onPress={() => setSenhaVisivel(!senhaVisivel)}
-                style={{ paddingHorizontal: 10 }}
-              >
+              {/* Botão do olhinho para mostrar/ocultar a senha */}
+              <TouchableOpacity onPress={() => setSenhaVisivel(!senhaVisivel)} style={{ paddingHorizontal: 10 }}>
                 <FontAwesome5
                   name={senhaVisivel ? 'eye-slash' : 'eye'}
                   size={16}
@@ -133,32 +161,32 @@ export default function TelaDeLogin() {
               </TouchableOpacity>
             </View>
 
-            {/* BOTÃO ENTRAR */}
+            {/* Botão principal de entrar */}
             <TouchableOpacity
               style={[estilosGlobais.botaoPrimario, { opacity: carregando ? 0.7 : 1 }]}
               onPress={realizarLogin}
               disabled={carregando}
             >
-              {carregando ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={estilosGlobais.textoBotaoPrimario}>Entrar</Text>
-              )}
+              {/* Mostra o spinner enquanto carrega, senão mostra o texto */}
+              {carregando
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={estilosGlobais.textoBotaoPrimario}>Entrar</Text>
+              }
             </TouchableOpacity>
 
-            {/* LINK CADASTRO */}
+            {/* Link para a tela de cadastro */}
             <TouchableOpacity
-              style={{ flexDirection: 'row', marginTop: 15 }}
+              style={{ flexDirection: 'row', marginTop: 18 }}
               onPress={() => router.push('/cadastro')}
             >
-              <Text>Não possui uma conta? </Text>
+              <Text style={{ color: '#9ca3af', fontSize: 14 }}>Não possui uma conta? </Text>
               <Text style={estilosGlobais.textoLink}>Cadastre-se!</Text>
             </TouchableOpacity>
 
+            {/* Link de recuperar senha (sem funcionalidade por enquanto) */}
             <TouchableOpacity style={estilosLogin.botaoEsqueciSenha}>
               <Text style={estilosGlobais.textoLink}>Esqueceu a senha?</Text>
             </TouchableOpacity>
-
           </View>
         </KeyboardAvoidingView>
       </View>

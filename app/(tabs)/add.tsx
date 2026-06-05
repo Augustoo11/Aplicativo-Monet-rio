@@ -1,119 +1,108 @@
 // app/(tabs)/add.tsx
-// Tela de adicionar transação — conectada ao banco de dados via API
+// ─────────────────────────────────────────────────────────────
+// Tela de adicionar transações com lista completa de histórico.
+// Permite adicionar receitas/despesas e ver o histórico do banco.
+// ─────────────────────────────────────────────────────────────
 
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, TextInput, StyleSheet,
-  TouchableOpacity, Alert, KeyboardAvoidingView,
-  Platform, ScrollView, ImageBackground,
-  StatusBar, Image, ActivityIndicator
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  ActivityIndicator,
 } from 'react-native';
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { estilosLogin } from '../../src/styles/_estilosLogin';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 
-// ─── URL do backend ────────────────────────────────────────────────────────────
-// ⚠️ Troque pela URL do seu Codespace (porta 8080) sem barra no final!
-const API_URL = 'https://reimagined-enigma-wvrrx4xrq599cgjx6-8080.app.github.dev';
+import { API_URL, CORES } from '../../src/config';
 
-// ─── Mapeamento de emojis por nome de categoria ────────────────────────────────
-// Como a API não tem emojis, mapeamos aqui pelo nome da categoria
-const EMOJIS: Record<string, string> = {
-  'Alimentação':     '🍔',
-  'Transporte':      '🚗',
-  'Moradia':         '🏠',
-  'Saúde':           '💊',
-  'Educação':        '📚',
-  'Lazer':           '🌴',
-  'Outros gastos':   '📦',
-  'Salário':         '💼',
-  'Freelance':       '💻',
-  'Outras receitas': '📦',
-};
-
-// ─── Tipos ────────────────────────────────────────────────────────────────────
+// ─── Tipos ────────────────────────────────────────────────────
 
 // Como o banco retorna uma categoria
-type CategoriaAPI = {
+type Categoria = {
   id: number;
   nome: string;
   tipo: string;
-  cor: string;
-  padrao: boolean;
 };
 
 // Como o banco retorna uma transação
-type TransacaoAPI = {
+type Transacao = {
   id: number;
   tipo: string;
   valor: number;
   descricao: string;
   data: string;
-  categoria: CategoriaAPI;
+  categoria: Categoria;
 };
 
+// ─────────────────────────────────────────────────────────────
+
 export default function Add() {
-  // ─── Estados da tela ────────────────────────────────────────────────────────
-  const [valor, setValor]               = useState('');
-  const [tipo, setTipo]                 = useState<'despesa' | 'receita'>('despesa');
-  const [categoriaSelecionada, setCat]  = useState<CategoriaAPI | null>(null);
-  const [abrirCat, setAbrirCat]         = useState(false);
+  // ── Estados do formulário ──
+  const [tipo, setTipo] = useState<'despesa' | 'receita'>('despesa');
+  const [valor, setValor] = useState('');
+  const [categoriaSelecionada, setCategoriaSelecionada] = useState<Categoria | null>(null);
+  const [descricao, setDescricao] = useState('');
 
-  // Dados vindos da API
-  const [categorias, setCategorias]     = useState<CategoriaAPI[]>([]);
-  const [transacoes, setTransacoes]     = useState<TransacaoAPI[]>([]);
-  const [usuarioId, setUsuarioId]       = useState<string | null>(null);
+  // ── Dados vindos da API ──
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [transacoes, setTransacoes] = useState<Transacao[]>([]);
+  const [usuarioId, setUsuarioId] = useState<string | null>(null);
 
-  // Controle de carregamento
-  const [carregandoCat, setCarregandoCat]       = useState(true);
-  const [salvando, setSalvando]                 = useState(false);
-  const [carregandoLista, setCarregandoLista]   = useState(false);
+  // ── Estados de carregamento ──
+  const [carregandoCategorias, setCarregandoCategorias] = useState(true);
+  const [salvando, setSalvando] = useState(false);
+  const [carregandoLista, setCarregandoLista] = useState(false);
 
-  // ─── Ao abrir a tela: busca usuário, categorias e transações ────────────────
+  // ─── Ao abrir a tela: busca tudo ──────────────────────────────
   useEffect(() => {
     carregarDados();
   }, []);
 
-  // Quando o tipo muda (receita/despesa), limpa a categoria selecionada
+  // Quando o tipo muda (receita/despesa), limpa a categoria
   useEffect(() => {
-    setCat(null);
+    setCategoriaSelecionada(null);
   }, [tipo]);
 
   async function carregarDados() {
-    // 1. Pega o ID do usuário salvo no login
     const id = await AsyncStorage.getItem('@usuario_id');
     setUsuarioId(id);
-
-    // 2. Busca as categorias do banco
     await buscarCategorias();
-
-    // 3. Busca as transações do usuário
     if (id) await buscarTransacoes(id);
   }
 
-  // ─── Busca categorias do banco ───────────────────────────────────────────────
+  // ─── Busca categorias do banco ───────────────────────────────
   async function buscarCategorias() {
     try {
-      setCarregandoCat(true);
+      setCarregandoCategorias(true);
       const resposta = await fetch(`${API_URL}/categorias`);
-      const dados: CategoriaAPI[] = await resposta.json();
+      const dados: Categoria[] = await resposta.json();
       setCategorias(dados);
     } catch (erro) {
       Alert.alert('Erro', 'Não foi possível carregar as categorias.');
     } finally {
-      setCarregandoCat(false);
+      setCarregandoCategorias(false);
     }
   }
 
-  // ─── Busca transações do usuário ─────────────────────────────────────────────
+  // ─── Busca transações do usuário ─────────────────────────────
   async function buscarTransacoes(id: string) {
     try {
       setCarregandoLista(true);
       const resposta = await fetch(`${API_URL}/transacoes/usuario/${id}`);
-      const dados: TransacaoAPI[] = await resposta.json();
+      const dados: Transacao[] = await resposta.json();
 
       // Ordena da mais recente para a mais antiga
-      const ordenadas = dados.sort((a, b) =>
-        new Date(b.data).getTime() - new Date(a.data).getTime()
+      const ordenadas = dados.sort(
+        (a, b) => new Date(b.data).getTime() - new Date(a.data).getTime()
       );
       setTransacoes(ordenadas);
     } catch (erro) {
@@ -123,160 +112,136 @@ export default function Add() {
     }
   }
 
-  // ─── Filtra categorias pelo tipo selecionado (receita ou despesa) ────────────
-  const categoriasFiltradas = categorias.filter(c => c.tipo === tipo);
-
-  // ─── Formata o valor enquanto digita ─────────────────────────────────────────
-  function formatarValor(texto: string) {
-    const n = texto.replace(/\D/g, '');
-    if (!n) return '';
-    return `R$ ${(parseInt(n) / 100).toFixed(2).replace('.', ',')}`;
+  // ─── Formata o valor enquanto o usuário digita ────────────────
+  // Ex: digita "15000" → mostra "R$ 150,00"
+  function formatarValorInput(texto: string) {
+    const somenteNumeros = texto.replace(/\D/g, '');
+    if (!somenteNumeros) return '';
+    const numero = parseInt(somenteNumeros) / 100;
+    return `R$ ${numero.toFixed(2).replace('.', ',')}`;
   }
 
-  // ─── Converte "R$ 50,00" para 50.00 ──────────────────────────────────────────
-  function textoParaNumero(v: string): number {
-    return parseFloat(v.replace('R$ ', '').replace(',', '.') || '0');
+  // ─── Converte "R$ 50,00" para 50.00 ──────────────────────────
+  function textoParaNumero(texto: string): number {
+    return parseFloat(texto.replace('R$ ', '').replace(',', '.') || '0');
   }
 
-  // ─── Salva a transação no banco ───────────────────────────────────────────────
+  // ─── Salva a transação no banco ───────────────────────────────
   async function salvar() {
-    // Validações básicas
-    if (!valor)               return Alert.alert('Erro', 'Informe o valor!');
-    if (!categoriaSelecionada) return Alert.alert('Erro', 'Selecione uma categoria!');
-    if (!usuarioId)           return Alert.alert('Erro', 'Usuário não identificado. Faça login novamente.');
+    if (!valor) return Alert.alert('Erro', 'Informe o valor.');
+    if (!categoriaSelecionada) return Alert.alert('Erro', 'Selecione uma categoria.');
+    if (!usuarioId) return Alert.alert('Erro', 'Usuário não identificado. Faça login novamente.');
 
     setSalvando(true);
 
     try {
-      // Data de hoje no formato que o backend espera: "2026-05-31"
-      const hoje = new Date().toISOString().split('T')[0];
+      const hoje = new Date().toISOString().split('T')[0]; // "2026-06-04"
 
-      // Monta o JSON da transação — igual ao que você testou no Postman!
-      const transacao = {
-        usuario:   { id: usuarioId },
+      // Monta o JSON que o backend espera
+      const novaTransacao = {
+        usuario: { id: usuarioId },
         categoria: { id: categoriaSelecionada.id },
-        tipo:      tipo,
-        valor:     textoParaNumero(valor),
-        descricao: categoriaSelecionada.nome,
-        data:      hoje,
+        tipo: tipo,
+        valor: textoParaNumero(valor),
+        descricao: descricao || categoriaSelecionada.nome,
+        data: hoje,
       };
 
-      // Envia para o backend
       const resposta = await fetch(`${API_URL}/transacoes`, {
-        method:  'POST',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify(transacao),
+        body: JSON.stringify(novaTransacao),
       });
 
-      const mensagem = await resposta.text();
-
       if (resposta.ok || resposta.status === 201) {
-        // Sucesso! Limpa os campos e atualiza a lista
+        // Limpa o formulário
         setValor('');
-        setCat(null);
-        setAbrirCat(false);
+        setDescricao('');
+        setCategoriaSelecionada(null);
 
-        Alert.alert(
-          '✅ Salvo!',
-          `${EMOJIS[categoriaSelecionada.nome] || '📦'} ${categoriaSelecionada.nome} — ${valor} registrado no banco!`
-        );
+        Alert.alert('Salvo!', `${categoriaSelecionada.nome} — ${valor} registrado!`);
 
         // Atualiza a lista de transações
-        await buscarTransacoes(usuarioId);
+        await buscarTransacoes(usuarioId!);
       } else {
+        const mensagem = await resposta.text();
         Alert.alert('Erro', mensagem || 'Não foi possível salvar a transação.');
       }
-
     } catch (erro) {
-      Alert.alert(
-        'Erro de conexão',
-        'Não foi possível conectar ao servidor.\nVerifique se o backend está rodando.'
-      );
+      Alert.alert('Erro de conexão', 'Verifique se o backend está rodando.');
     } finally {
       setSalvando(false);
     }
   }
 
-  // ─── Calcula totais para o resumo ─────────────────────────────────────────────
+  // ─── Cálculos do resumo ───────────────────────────────────────
   const totalReceitas = transacoes
-    .filter(t => t.tipo === 'receita')
+    .filter((t) => t.tipo === 'receita')
     .reduce((acc, t) => acc + t.valor, 0);
 
   const totalDespesas = transacoes
-    .filter(t => t.tipo === 'despesa')
+    .filter((t) => t.tipo === 'despesa')
     .reduce((acc, t) => acc + t.valor, 0);
 
-  const saldo = totalReceitas - totalDespesas;
+  const saldoAtual = totalReceitas - totalDespesas;
 
-  // ─── Formata valor numérico para exibição ─────────────────────────────────────
-  function formatarExibicao(v: number) {
-    return v.toFixed(2).replace('.', ',');
+  // ─── Formata valor para exibição na lista ─────────────────────
+  function formatarMoeda(v: number) {
+    return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   }
 
-  // ─── Renderização ─────────────────────────────────────────────────────────────
+  // ─── Categorias filtradas pelo tipo selecionado ───────────────
+  const categoriasFiltradas = categorias.filter((c) => c.tipo === tipo);
+
+  // ─── Renderização ─────────────────────────────────────────────
   return (
-    <ImageBackground source={require('../../assets/Fundo.png')} style={estilosLogin.imagemFundo}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-
+    <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={s.container}>
+        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
 
-          {/* ── Logo + Título ── */}
-          <View style={s.topo}>
-            <Image source={require('../assets/logo.png')} style={s.logo} resizeMode="contain" />
-            <Text style={s.titulo}>Nova Transação</Text>
-          </View>
+          {/* Título da tela */}
+          <Text style={styles.tituloPagina}>Nova Transação</Text>
 
-          {/* ── Toggle Receita / Despesa ── */}
-          <View style={s.tipoContainer}>
+          {/* Seleção de tipo: Receita ou Despesa */}
+          <View style={styles.filhaTipo}>
             <TouchableOpacity
-              style={[s.tipoBotao, tipo === 'receita' && s.receita]}
+              style={[styles.botaoTipo, tipo === 'receita' && { backgroundColor: CORES.verde, borderColor: CORES.verde }]}
               onPress={() => setTipo('receita')}
             >
-              <Text style={s.tipoTexto}>💰 Receita</Text>
+              <Text style={[styles.textoTipo, tipo === 'receita' && { color: '#fff' }]}>Receita</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[s.tipoBotao, tipo === 'despesa' && s.despesa]}
+              style={[styles.botaoTipo, tipo === 'despesa' && { backgroundColor: CORES.vermelho, borderColor: CORES.vermelho }]}
               onPress={() => setTipo('despesa')}
             >
-              <Text style={s.tipoTexto}>💸 Despesa</Text>
+              <Text style={[styles.textoTipo, tipo === 'despesa' && { color: '#fff' }]}>Despesa</Text>
             </TouchableOpacity>
           </View>
 
-          {/* ── Seletor de categoria ── */}
-          <TouchableOpacity
-            style={s.catBotao}
-            onPress={() => setAbrirCat(!abrirCat)}
-            disabled={carregandoCat}
-          >
-            <Text style={[s.catBotaoTexto, categoriaSelecionada && s.catBotaoTextoAtivo]}>
-              {carregandoCat
-                ? 'Carregando categorias...'
-                : categoriaSelecionada
-                  ? `${EMOJIS[categoriaSelecionada.nome] || '📦'}  ${categoriaSelecionada.nome}`
-                  : 'Selecionar categoria'
-              }
-            </Text>
-            <Text style={s.seta}>{abrirCat ? '▲' : '▼'}</Text>
-          </TouchableOpacity>
+          {/* Seleção de categoria — lista de botões clicáveis */}
+          <Text style={styles.labelCampo}>Categoria</Text>
 
-          {/* ── Grid de categorias vindas do banco ── */}
-          {abrirCat && (
-            <View style={s.grid}>
+          {carregandoCategorias ? (
+            <ActivityIndicator color={CORES.azul} style={{ marginBottom: 16 }} />
+          ) : (
+            <View style={styles.gradeCategorias}>
               {categoriasFiltradas.length === 0 ? (
-                <Text style={{ color: 'rgba(255,255,255,0.4)', padding: 10 }}>
-                  Nenhuma categoria encontrada
-                </Text>
+                <Text style={{ color: CORES.textoEscuro }}>Nenhuma categoria encontrada.</Text>
               ) : (
-                categoriasFiltradas.map(cat => (
+                categoriasFiltradas.map((cat) => (
                   <TouchableOpacity
                     key={cat.id}
-                    style={[s.catItem, categoriaSelecionada?.id === cat.id && s.catItemAtivo]}
-                    onPress={() => { setCat(cat); setAbrirCat(false); }}
+                    style={[
+                      styles.botaoCategoria,
+                      categoriaSelecionada?.id === cat.id && styles.botaoCategoriaAtivo,
+                    ]}
+                    onPress={() => setCategoriaSelecionada(cat)}
                   >
-                    <Text style={s.catEmoji}>{EMOJIS[cat.nome] || '📦'}</Text>
-                    <Text style={[s.catLabel, categoriaSelecionada?.id === cat.id && s.catLabelAtivo]}>
+                    <Text style={[
+                      styles.textoCategoria,
+                      categoriaSelecionada?.id === cat.id && styles.textoCategoriaAtivo,
+                    ]}>
                       {cat.nome}
                     </Text>
                   </TouchableOpacity>
@@ -285,141 +250,285 @@ export default function Add() {
             </View>
           )}
 
-          {/* ── Campo de valor ── */}
+          {/* Campo de valor — já mostra "R$" */}
+          <Text style={styles.labelCampo}>Valor</Text>
           <TextInput
-            style={s.input}
-            placeholder="Valor (R$)"
-            placeholderTextColor="#667"
+            style={styles.input}
+            placeholder="R$ 0,00"
+            placeholderTextColor="#6b7280"
             keyboardType="numeric"
             value={valor}
-            onChangeText={t => setValor(formatarValor(t))}
+            onChangeText={(t) => setValor(formatarValorInput(t))}
           />
 
-          {/* ── Botão Salvar ── */}
+          {/* Campo de descrição (opcional) */}
+          <Text style={styles.labelCampo}>Descrição (opcional)</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Ex: Almoço com amigos"
+            placeholderTextColor="#6b7280"
+            value={descricao}
+            onChangeText={setDescricao}
+          />
+
+          {/* Botão de salvar */}
           <TouchableOpacity
-            style={[s.botao, salvando && { opacity: 0.7 }]}
+            style={[styles.botaoSalvar, salvando && { opacity: 0.7 }]}
             onPress={salvar}
             disabled={salvando}
           >
             {salvando
               ? <ActivityIndicator color="#fff" />
-              : <Text style={s.botaoTexto}>Salvar no Banco 💾</Text>
+              : <Text style={styles.textoSalvar}>Salvar</Text>
             }
           </TouchableOpacity>
 
-          {/* ── Resumo e lista de transações ── */}
+          {/* ── Resumo financeiro ── */}
           {transacoes.length > 0 && (
-            <View style={{ marginTop: 30 }}>
-
-              {/* Resumo financeiro */}
-              <View style={s.resumo}>
-                <View style={s.resumoItem}>
-                  <Text style={s.resumoLabel}>Receitas</Text>
-                  <Text style={[s.resumoValor, { color: '#4CAF50' }]}>
-                    + R$ {formatarExibicao(totalReceitas)}
-                  </Text>
-                </View>
-                <View style={s.divider} />
-                <View style={s.resumoItem}>
-                  <Text style={s.resumoLabel}>Despesas</Text>
-                  <Text style={[s.resumoValor, { color: '#F44336' }]}>
-                    - R$ {formatarExibicao(totalDespesas)}
-                  </Text>
-                </View>
-                <View style={s.divider} />
-                <View style={s.resumoItem}>
-                  <Text style={s.resumoLabel}>Saldo</Text>
-                  <Text style={[s.resumoValor, { color: saldo >= 0 ? '#4CAF50' : '#F44336' }]}>
-                    R$ {formatarExibicao(saldo)}
-                  </Text>
-                </View>
+            <View style={styles.resumo}>
+              <View style={styles.itemResumo}>
+                <Text style={styles.labelResumo}>Receitas</Text>
+                <Text style={[styles.valorResumo, { color: CORES.verde }]}>{formatarMoeda(totalReceitas)}</Text>
               </View>
+              <View style={styles.divisorResumo} />
+              <View style={styles.itemResumo}>
+                <Text style={styles.labelResumo}>Despesas</Text>
+                <Text style={[styles.valorResumo, { color: CORES.vermelho }]}>{formatarMoeda(totalDespesas)}</Text>
+              </View>
+              <View style={styles.divisorResumo} />
+              <View style={styles.itemResumo}>
+                <Text style={styles.labelResumo}>Saldo</Text>
+                <Text style={[styles.valorResumo, { color: saldoAtual >= 0 ? CORES.verde : CORES.vermelho }]}>
+                  {formatarMoeda(saldoAtual)}
+                </Text>
+              </View>
+            </View>
+          )}
 
-              <Text style={s.secaoLabel}>Lançamentos do banco</Text>
+          {/* ── Lista de transações do banco ── */}
+          {transacoes.length > 0 && (
+            <>
+              <Text style={styles.labelSecao}>HISTÓRICO DO BANCO</Text>
 
               {carregandoLista
-                ? <ActivityIndicator color="#fff" style={{ marginTop: 20 }} />
-                : transacoes.map(item => (
-                    <View key={item.id} style={s.card}>
-                      <View style={[
-                        s.cardLinha,
-                        { backgroundColor: item.tipo === 'receita' ? '#4CAF50' : '#F44336' }
-                      ]} />
-                      <Text style={s.cardEmoji}>
-                        {EMOJIS[item.categoria?.nome] || '📦'}
-                      </Text>
-                      <View style={{ flex: 1, paddingVertical: 14 }}>
-                        <Text style={s.cardLabel}>
-                          {item.categoria?.nome || item.descricao}
-                        </Text>
-                        <Text style={s.cardTipo}>
-                          {item.tipo === 'receita' ? '💰 Receita' : '💸 Despesa'} • {item.data}
-                        </Text>
-                      </View>
-                      <Text style={[
-                        s.cardValor,
-                        { color: item.tipo === 'receita' ? '#4CAF50' : '#F44336' }
-                      ]}>
-                        {item.tipo === 'receita' ? '+' : '-'} R$ {formatarExibicao(item.valor)}
-                      </Text>
+                ? <ActivityIndicator color={CORES.azul} style={{ marginTop: 20 }} />
+                : transacoes.map((item) => (
+                  <View key={item.id} style={styles.itemTransacao}>
+                    {/* Barra colorida à esquerda */}
+                    <View style={[styles.barraCor, { backgroundColor: item.tipo === 'receita' ? CORES.verde : CORES.vermelho }]} />
+
+                    {/* Ícone */}
+                    <Ionicons
+                      name={item.tipo === 'receita' ? 'wallet-outline' : 'arrow-down-outline'}
+                      size={20}
+                      color={item.tipo === 'receita' ? CORES.verde : CORES.vermelho}
+                      style={{ paddingHorizontal: 12 }}
+                    />
+
+                    {/* Informações */}
+                    <View style={{ flex: 1, paddingVertical: 14 }}>
+                      <Text style={styles.nomeTransacao}>{item.categoria?.nome || item.descricao}</Text>
+                      <Text style={styles.dataTransacao}>{item.tipo} • {item.data}</Text>
                     </View>
-                  ))
+
+                    {/* Valor */}
+                    <Text style={[styles.valorTransacao, { color: item.tipo === 'receita' ? CORES.verde : CORES.vermelho }]}>
+                      {item.tipo === 'receita' ? '+' : '-'} {formatarMoeda(item.valor)}
+                    </Text>
+                  </View>
+                ))
               }
-            </View>
+            </>
           )}
 
           {/* Mensagem quando não tem transações */}
           {transacoes.length === 0 && !carregandoLista && (
             <View style={{ alignItems: 'center', marginTop: 40 }}>
-              <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 14 }}>
-                Nenhuma transação registrada ainda
+              <Text style={{ color: CORES.textoEscuro, fontSize: 14 }}>
+                Nenhuma transação registrada ainda.
               </Text>
-              <Text style={{ color: 'rgba(255,255,255,0.2)', fontSize: 12, marginTop: 4 }}>
-                Adicione sua primeira receita ou despesa!
+              <Text style={{ color: CORES.textoEscuro, fontSize: 12, marginTop: 4 }}>
+                Adicione sua primeira receita ou despesa acima!
               </Text>
             </View>
           )}
 
         </ScrollView>
       </KeyboardAvoidingView>
-    </ImageBackground>
+    </SafeAreaView>
   );
 }
 
-// ─── Estilos ───────────────────────────────────────────────────────────────────
-const s = StyleSheet.create({
-  container:          { flexGrow: 1, padding: 20, justifyContent: 'center', paddingTop: 50 },
-  topo:               { alignItems: 'center', marginBottom: 20 },
-  logo:               { width: 120, height: 120, marginTop: -240 },
-  titulo:             { fontSize: 24, fontWeight: 'bold', textAlign: 'center', color: '#fff' },
-  tipoContainer:      { flexDirection: 'row', marginBottom: 14, gap: 10 },
-  tipoBotao:          { flex: 1, padding: 15, borderRadius: 10, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.1)' },
-  receita:            { backgroundColor: '#4CAF50' },
-  despesa:            { backgroundColor: '#F44336' },
-  tipoTexto:          { color: '#fff', fontWeight: 'bold' },
-  catBotao:           { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', padding: 15, borderRadius: 10, marginBottom: 10 },
-  catBotaoTexto:      { fontSize: 14, color: 'rgba(255,255,255,0.4)' },
-  catBotaoTextoAtivo: { color: '#7ab0ff' },
-  seta:               { fontSize: 11, color: 'rgba(255,255,255,0.4)' },
-  grid:               { flexDirection: 'row', flexWrap: 'wrap', gap: 8, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 12, padding: 12, marginBottom: 10 },
-  catItem:            { width: '22%', backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 10, paddingVertical: 10, paddingHorizontal: 4, alignItems: 'center', borderWidth: 1.5, borderColor: 'transparent' },
-  catItemAtivo:       { backgroundColor: 'rgba(100,160,255,0.18)', borderColor: '#4e82f7' },
-  catEmoji:           { fontSize: 22 },
-  catLabel:           { fontSize: 9, color: 'rgba(255,255,255,0.45)', marginTop: 4, textAlign: 'center' },
-  catLabelAtivo:      { color: '#7ab0ff', fontWeight: '600' },
-  input:              { backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', padding: 15, borderRadius: 10, marginBottom: 15, color: '#fff', fontSize: 18 },
-  botao:              { backgroundColor: '#2176ff', padding: 16, borderRadius: 10, alignItems: 'center' },
-  botaoTexto:         { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-  resumo:             { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 12, padding: 16, marginBottom: 20, justifyContent: 'space-between', alignItems: 'center' },
-  resumoItem:         { flex: 1, alignItems: 'center' },
-  resumoLabel:        { fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 4 },
-  resumoValor:        { fontSize: 13, fontWeight: 'bold' },
-  divider:            { width: 1, height: 30, backgroundColor: 'rgba(255,255,255,0.15)' },
-  secaoLabel:         { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 },
-  card:               { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 12, marginBottom: 10, overflow: 'hidden' },
-  cardLinha:          { width: 4, alignSelf: 'stretch' },
-  cardEmoji:          { fontSize: 22, paddingHorizontal: 12 },
-  cardLabel:          { fontSize: 14, fontWeight: '600', color: '#fff' },
-  cardTipo:           { fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 2 },
-  cardValor:          { fontSize: 14, fontWeight: 'bold', paddingRight: 14 },
+// ─── Estilos ────────────────────────────────────────────────
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: CORES.fundo,
+  },
+  scroll: {
+    flexGrow: 1,
+    padding: 20,
+    paddingTop: 30,
+    paddingBottom: 40,
+  },
+
+  // Título
+  tituloPagina: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: CORES.textoClaro,
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+
+  // Tipo (Receita / Despesa)
+  filhaTipo: {
+    flexDirection: 'row',
+    marginBottom: 20,
+    gap: 10,
+  },
+  botaoTipo: {
+    flex: 1,
+    padding: 15,
+    borderRadius: 12,
+    alignItems: 'center',
+    backgroundColor: CORES.cartao,
+    borderWidth: 1,
+    borderColor: CORES.borda,
+  },
+  textoTipo: {
+    color: CORES.textoMedio,
+    fontWeight: 'bold',
+    fontSize: 15,
+  },
+
+  // Categorias
+  labelCampo: {
+    color: CORES.textoMedio,
+    fontSize: 13,
+    marginBottom: 10,
+  },
+  gradeCategorias: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 20,
+  },
+  botaoCategoria: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    backgroundColor: CORES.cartao,
+    borderWidth: 1,
+    borderColor: CORES.borda,
+  },
+  botaoCategoriaAtivo: {
+    backgroundColor: CORES.azul,
+    borderColor: CORES.azul,
+  },
+  textoCategoria: {
+    color: CORES.textoMedio,
+    fontSize: 13,
+  },
+  textoCategoriaAtivo: {
+    color: '#FFF',
+    fontWeight: 'bold',
+  },
+
+  // Inputs
+  input: {
+    backgroundColor: CORES.cartao,
+    borderWidth: 1,
+    borderColor: CORES.borda,
+    padding: 15,
+    borderRadius: 12,
+    marginBottom: 16,
+    color: CORES.textoClaro,
+    fontSize: 16,
+  },
+
+  // Botão salvar
+  botaoSalvar: {
+    backgroundColor: CORES.azul,
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 28,
+  },
+  textoSalvar: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+
+  // Resumo financeiro
+  resumo: {
+    flexDirection: 'row',
+    backgroundColor: CORES.cartao,
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 24,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: CORES.borda,
+  },
+  itemResumo: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  labelResumo: {
+    fontSize: 11,
+    color: CORES.textoEscuro,
+    marginBottom: 4,
+  },
+  valorResumo: {
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
+  divisorResumo: {
+    width: 1,
+    height: 30,
+    backgroundColor: CORES.borda,
+  },
+
+  // Label de seção
+  labelSecao: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: CORES.textoEscuro,
+    letterSpacing: 1,
+    marginBottom: 12,
+  },
+
+  // Item de transação na lista
+  itemTransacao: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: CORES.cartao,
+    borderRadius: 12,
+    marginBottom: 10,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: CORES.borda,
+  },
+  barraCor: {
+    width: 4,
+    alignSelf: 'stretch',
+  },
+  nomeTransacao: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: CORES.textoClaro,
+  },
+  dataTransacao: {
+    fontSize: 11,
+    color: CORES.textoEscuro,
+    marginTop: 2,
+  },
+  valorTransacao: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    paddingRight: 14,
+  },
 });

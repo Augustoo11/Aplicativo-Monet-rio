@@ -1,26 +1,36 @@
 // src/componentes/PerfilModal.tsx
-// Modal de perfil do usuário com dados e opção de sair
+// ─────────────────────────────────────────────────────────────
+// Modal que aparece ao clicar no avatar do usuário.
+// Mostra os dados do perfil e a opção de sair da conta.
+// ─────────────────────────────────────────────────────────────
 
 import React from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity,
-  Modal, Alert, ScrollView,
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Modal,
+  Alert,
+  ScrollView,
 } from 'react-native';
 import { FontAwesome5, Ionicons } from '@expo/vector-icons';
+import { CORES } from '../config';
 
-interface PerfilModalProps {
-  visible: boolean;
-  onClose: () => void;
-  nome: string;
-  email: string;
-  usuarioId: string | null;
-  onSair: () => void;
+// Propriedades que esse componente recebe
+interface Props {
+  visible: boolean;       // se o modal está visível
+  onClose: () => void;    // função chamada ao fechar
+  nome: string;           // nome do usuário logado
+  email: string;          // email do usuário logado
+  usuarioId: string | null; // ID do usuário no banco
+  onSair: () => void;     // função chamada ao confirmar saída
 }
 
-export default function PerfilModal({
-  visible, onClose, nome, email, usuarioId, onSair,
-}: PerfilModalProps) {
+export default function PerfilModal({ visible, onClose, nome, email, usuarioId, onSair }: Props) {
 
+  // Pega as duas primeiras letras do nome para o avatar
+  // Ex: "João Silva" → "JS"
   const iniciais = nome
     .split(' ')
     .filter(Boolean)
@@ -28,93 +38,123 @@ export default function PerfilModal({
     .map((n) => n[0].toUpperCase())
     .join('');
 
-  const confirmarSaida = () => {
+  // Mostra um alerta antes de sair para confirmar
+  function confirmarSaida() {
     Alert.alert(
       'Sair da conta',
       'Deseja realmente sair?',
       [
         { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Sair',
-          style: 'destructive',
-          onPress: onSair,
-        },
+        { text: 'Sair', style: 'destructive', onPress: onSair },
       ]
     );
-  };
+  }
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.overlay}>
         <View style={styles.sheet}>
 
-          {/* Alça */}
-          <View style={styles.handle} />
+          {/* Alça de arraste (decorativa) */}
+          <View style={styles.alca} />
 
-          {/* Cabeçalho */}
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>Meu Perfil</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Ionicons name="close" size={22} color="#94A3B8" />
+          {/* Cabeçalho com título e botão fechar */}
+          <View style={styles.cabecalho}>
+            <Text style={styles.tituloCabecalho}>Meu Perfil</Text>
+            <TouchableOpacity onPress={onClose} style={styles.botaoFechar}>
+              <Ionicons name="close" size={22} color={CORES.textoMedio} />
             </TouchableOpacity>
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false}>
 
-            {/* Avatar + nome */}
-            <View style={styles.avatarSection}>
-              <View style={styles.avatarCircle}>
-                <Text style={styles.avatarText}>{iniciais}</Text>
+            {/* Avatar com iniciais + nome e email */}
+            <View style={styles.secaoAvatar}>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarTexto}>{iniciais}</Text>
               </View>
-              <Text style={styles.nomeText}>{nome}</Text>
-              <Text style={styles.emailText}>{email}</Text>
+              <Text style={styles.nomeTexto}>{nome}</Text>
+              <Text style={styles.emailTexto}>{email}</Text>
             </View>
 
-            {/* Dados do perfil */}
+            {/* Card com informações da conta */}
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>Informações da conta</Text>
+              <Text style={styles.tituloCard}>INFORMAÇÕES DA CONTA</Text>
 
-              <View style={styles.infoRow}>
-                <View style={styles.infoIconBox}>
-                  <FontAwesome5 name="user" size={14} color="#3B82F6" />
+              {/* Linha: Nome */}
+              <View style={styles.linhaInfo}>
+                <View style={styles.iconeInfo}>
+                  <FontAwesome5 name="user" size={14} color={CORES.azul} />
                 </View>
-                <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>Nome completo</Text>
-                  <Text style={styles.infoValue}>{nome}</Text>
-                </View>
-              </View>
-
-              <View style={styles.divider} />
-
-              <View style={styles.infoRow}>
-                <View style={styles.infoIconBox}>
-                  <FontAwesome5 name="envelope" size={14} color="#3B82F6" />
-                </View>
-                <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>E-mail</Text>
-                  <Text style={styles.infoValue}>{email}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.labelInfo}>Nome completo</Text>
+                  <Text style={styles.valorInfo}>{nome}</Text>
                 </View>
               </View>
 
-              <View style={styles.divider} />
+              <View style={styles.divisor} />
 
-              <View style={styles.infoRow}>
-                <View style={styles.infoIconBox}>
-                  <FontAwesome5 name="id-badge" size={14} color="#3B82F6" />
+              {/* Linha: Email */}
+              <View style={styles.linhaInfo}>
+                <View style={styles.iconeInfo}>
+                  <FontAwesome5 name="envelope" size={14} color={CORES.azul} />
                 </View>
-                <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>ID do usuário</Text>
-                  <Text style={styles.infoValue}>#{usuarioId ?? '—'}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.labelInfo}>E-mail</Text>
+                  <Text style={styles.valorInfo}>{email}</Text>
+                </View>
+              </View>
+
+              <View style={styles.divisor} />
+
+              {/* Linha: ID do usuário */}
+              <View style={styles.linhaInfo}>
+                <View style={styles.iconeInfo}>
+                  <FontAwesome5 name="id-badge" size={14} color={CORES.azul} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.labelInfo}>ID do usuário</Text>
+                  <Text style={styles.valorInfo}>#{usuarioId ?? '—'}</Text>
                 </View>
               </View>
             </View>
 
-            {/* Botão Sair */}
-            <TouchableOpacity style={styles.sairBtn} onPress={confirmarSaida} activeOpacity={0.8}>
-              <FontAwesome5 name="sign-out-alt" size={16} color="#EF4444" style={{ marginRight: 10 }} />
-              <Text style={styles.sairText}>Sair da conta</Text>
+            {/* Seção de Configurações simples */}
+            <View style={styles.card}>
+              <Text style={styles.tituloCard}>CONFIGURAÇÕES</Text>
+
+              {/* Item: Notificações (visual, sem funcionalidade por enquanto) */}
+              <View style={styles.linhaInfo}>
+                <View style={styles.iconeInfo}>
+                  <FontAwesome5 name="bell" size={14} color={CORES.azul} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.valorInfo}>Notificações</Text>
+                  <Text style={styles.labelInfo}>Em breve</Text>
+                </View>
+              </View>
+
+              <View style={styles.divisor} />
+
+              {/* Item: Versão do app */}
+              <View style={styles.linhaInfo}>
+                <View style={styles.iconeInfo}>
+                  <FontAwesome5 name="info-circle" size={14} color={CORES.azul} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.valorInfo}>Versão do app</Text>
+                  <Text style={styles.labelInfo}>1.0.0</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Botão de sair */}
+            <TouchableOpacity style={styles.botaoSair} onPress={confirmarSaida}>
+              <FontAwesome5 name="sign-out-alt" size={16} color={CORES.vermelho} style={{ marginRight: 10 }} />
+              <Text style={styles.textoSair}>Sair da conta</Text>
             </TouchableOpacity>
 
+            {/* Espaço extra no final para não ficar colado */}
             <View style={{ height: 30 }} />
           </ScrollView>
         </View>
@@ -124,126 +164,140 @@ export default function PerfilModal({
 }
 
 const styles = StyleSheet.create({
+  // Fundo escurecido atrás do modal
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'flex-end',
   },
+
+  // O painel em si que sobe da parte inferior
   sheet: {
-    backgroundColor: '#1E293B',
+    backgroundColor: CORES.cartao,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     padding: 24,
-    minHeight: '65%',
+    minHeight: '70%',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: CORES.borda,
   },
-  handle: {
-    width: 40, height: 4,
-    backgroundColor: '#334155',
+
+  // Alça de arraste no topo do modal
+  alca: {
+    width: 40,
+    height: 4,
+    backgroundColor: CORES.borda,
     borderRadius: 2,
     alignSelf: 'center',
     marginBottom: 20,
   },
-  header: {
+
+  // Cabeçalho com título e botão fechar
+  cabecalho: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 24,
   },
-  headerTitle: {
-    color: '#FFF',
+  tituloCabecalho: {
+    color: CORES.textoClaro,
     fontSize: 20,
     fontWeight: 'bold',
   },
-  closeBtn: {
-    width: 36, height: 36,
+  botaoFechar: {
+    width: 36,
+    height: 36,
     borderRadius: 18,
-    backgroundColor: '#0F172A',
+    backgroundColor: CORES.fundo,
     justifyContent: 'center',
     alignItems: 'center',
   },
 
-  // Avatar
-  avatarSection: {
+  // Seção do avatar
+  secaoAvatar: {
     alignItems: 'center',
     marginBottom: 28,
   },
-  avatarCircle: {
-    width: 80, height: 80,
+  avatar: {
+    width: 80,
+    height: 80,
     borderRadius: 40,
-    backgroundColor: '#3B82F6',
+    backgroundColor: CORES.azul,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
     borderWidth: 3,
     borderColor: '#60A5FA',
   },
-  avatarText: {
+  avatarTexto: {
     color: '#FFF',
     fontSize: 28,
     fontWeight: 'bold',
   },
-  nomeText: {
-    color: '#FFF',
+  nomeTexto: {
+    color: CORES.textoClaro,
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 4,
   },
-  emailText: {
-    color: '#94A3B8',
+  emailTexto: {
+    color: CORES.textoMedio,
     fontSize: 14,
   },
 
-  // Card de informações
+  // Card de seção (informações e configurações)
   card: {
-    backgroundColor: '#0F172A',
+    backgroundColor: CORES.fundo,
     borderRadius: 16,
     padding: 16,
-    marginBottom: 20,
+    marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: CORES.borda,
   },
-  cardTitle: {
-    color: '#64748B',
-    fontSize: 12,
+  tituloCard: {
+    color: CORES.textoEscuro,
+    fontSize: 11,
     fontWeight: 'bold',
     letterSpacing: 1,
     textTransform: 'uppercase',
     marginBottom: 16,
   },
-  infoRow: {
+
+  // Linha de informação (ícone + texto)
+  linhaInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 10,
   },
-  infoIconBox: {
-    width: 36, height: 36,
+  iconeInfo: {
+    width: 36,
+    height: 36,
     borderRadius: 10,
     backgroundColor: 'rgba(59, 130, 246, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
   },
-  infoContent: { flex: 1 },
-  infoLabel: {
-    color: '#64748B',
+  labelInfo: {
+    color: CORES.textoEscuro,
     fontSize: 12,
     marginBottom: 2,
   },
-  infoValue: {
-    color: '#FFF',
+  valorInfo: {
+    color: CORES.textoClaro,
     fontSize: 15,
     fontWeight: '500',
   },
-  divider: {
+
+  // Linha divisora entre itens
+  divisor: {
     height: 1,
-    backgroundColor: '#1E293B',
+    backgroundColor: CORES.cartao,
     marginVertical: 2,
   },
 
-  // Botão sair
-  sairBtn: {
+  // Botão de sair
+  botaoSair: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -251,10 +305,11 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#EF4444',
+    borderColor: CORES.vermelho,
+    marginTop: 4,
   },
-  sairText: {
-    color: '#EF4444',
+  textoSair: {
+    color: CORES.vermelho,
     fontWeight: 'bold',
     fontSize: 16,
   },

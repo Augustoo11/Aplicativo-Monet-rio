@@ -1,103 +1,97 @@
+// src/store/useTransacoesStore.ts
+// ─────────────────────────────────────────────────────────────
+// Store global de transações usando Zustand.
+// Guarda as transações na memória enquanto o app está aberto.
+// Toda tela do app acessa os dados por aqui.
+// ─────────────────────────────────────────────────────────────
+
 import { create } from 'zustand';
 
-type TipoTransacao = 'receita' | 'despesa';
-
+// Formato de uma transação dentro do app
 type Transacao = {
   id: string;
-  tipo: TipoTransacao;
+  tipo: 'receita' | 'despesa';
   valor: number;
-  valorFormatado: string;
+  valorFormatado: string; // ex: "R$ 150,00"
   categoriaId: string;
-  categoriaLabel: string;
-  emoji: string;
+  categoriaLabel: string; // ex: "Alimentação"
+  descricao: string;
   data: Date;
 };
 
-type CategoriaResumo = {
+// Formato resumido de gastos por categoria (usado nos relatórios)
+type ResumoPorCategoria = {
   categoriaId: string;
   label: string;
-  emoji: string;
   total: number;
 };
 
-type NovaTransacao = Omit<Transacao, 'id' | 'data'>;
-
+// Tudo que o store oferece para as telas do app
 type Store = {
   transacoes: Transacao[];
 
-  // ─── Ações de Sync e Reset ───
-  setTransacoesDoBanco: (novasTransacoes: Transacao[]) => void;
+  // Substitui todas as transações (usado ao buscar do banco)
+  setTransacoesDoBanco: (novas: Transacao[]) => void;
+
+  // Apaga tudo (usado ao fazer logout)
   limparTransacoes: () => void;
 
-  // ─── Ações CRUD ───
-  adicionarTransacao: (transacao: NovaTransacao) => void;
-  removerTransacao: (id: string) => void;
-
-  // ─── Getters / Cálculos ───
-  ultimasTransacoes: (limite?: number) => Transacao[];
-  totalPorCategoria: () => CategoriaResumo[];
+  // Calcula o total de receitas
   totalReceitas: () => number;
+
+  // Calcula o total de despesas
   totalDespesas: () => number;
+
+  // Calcula o saldo (receitas - despesas)
   saldo: () => number;
+
+  // Agrupa despesas por categoria (para os relatórios)
+  totalPorCategoria: () => ResumoPorCategoria[];
 };
 
 export const useTransacoesStore = create<Store>((set, get) => ({
   transacoes: [],
 
-  // ─── Implementação das Ações ───
-  setTransacoesDoBanco: (novasTransacoes) => set({ transacoes: novasTransacoes }),
-  
+  // Salva a lista de transações vinda do banco
+  setTransacoesDoBanco: (novas) => set({ transacoes: novas }),
+
+  // Apaga todas as transações da memória
   limparTransacoes: () => set({ transacoes: [] }),
 
-  adicionarTransacao: (transacao) =>
-    set((state) => ({
-      transacoes: [
-        ...state.transacoes,
-        {
-          ...transacao,
-          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-          data: new Date(),
-        },
-      ],
-    })),
+  // Soma todos os valores de receita
+  totalReceitas: () =>
+    get()
+      .transacoes.filter((t) => t.tipo === 'receita')
+      .reduce((total, t) => total + t.valor, 0),
 
-  removerTransacao: (id) =>
-    set((state) => ({
-      transacoes: state.transacoes.filter((item) => item.id !== id),
-    })),
+  // Soma todos os valores de despesa
+  totalDespesas: () =>
+    get()
+      .transacoes.filter((t) => t.tipo === 'despesa')
+      .reduce((total, t) => total + t.valor, 0),
 
-  ultimasTransacoes: (limite = 10) =>
-    get().transacoes.slice(-limite),
+  // Saldo = receitas - despesas
+  saldo: () => get().totalReceitas() - get().totalDespesas(),
 
+  // Agrupa despesas por categoria e ordena da maior para a menor
   totalPorCategoria: () => {
-    const categorias = get()
-      .transacoes.filter((item) => item.tipo === 'despesa')
-      .reduce<Record<string, CategoriaResumo>>((acc, item) => {
-        const key = item.categoriaId;
-        if (!acc[key]) {
-          acc[key] = {
-            categoriaId: item.categoriaId,
-            label: item.categoriaLabel,
-            emoji: item.emoji,
+    // Junta todas as despesas agrupando por categoria
+    const grupos: Record<string, ResumoPorCategoria> = {};
+
+    get()
+      .transacoes.filter((t) => t.tipo === 'despesa')
+      .forEach((t) => {
+        if (!grupos[t.categoriaId]) {
+          grupos[t.categoriaId] = {
+            categoriaId: t.categoriaId,
+            label: t.categoriaLabel,
             total: 0,
           };
         }
-        acc[key].total += item.valor;
-        return acc;
-      }, {});
+        grupos[t.categoriaId].total += t.valor;
+      });
 
-    return Object.values(categorias).sort((a, b) => b.total - a.total);
+    // Transforma o objeto em array e ordena do maior para o menor
+    return Object.values(grupos).sort((a, b) => b.total - a.total);
   },
-
-  totalReceitas: () =>
-    get()
-      .transacoes.filter((item) => item.tipo === 'receita')
-      .reduce((acc, item) => acc + item.valor, 0),
-
-  totalDespesas: () =>
-    get()
-      .transacoes.filter((item) => item.tipo === 'despesa')
-      .reduce((acc, item) => acc + item.valor, 0),
-
-  saldo: () => get().totalReceitas() - get().totalDespesas(),
 }));

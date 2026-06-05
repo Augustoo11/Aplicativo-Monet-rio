@@ -1,3 +1,10 @@
+// app/cadastro.tsx
+// ─────────────────────────────────────────────────────────────
+// Tela de Cadastro — onde o usuário cria uma conta nova.
+// Envia nome, email e senha para o backend, e ao criar
+// a conta já faz login automático.
+// ─────────────────────────────────────────────────────────────
+
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -19,22 +26,25 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
-import { estilosLogin } from '../src/styles/_estilosLogin';
-import { estilosGlobais } from '../src/componentes/estilosGlobais';
-
-const API_URL = 'https://reimagined-enigma-wvrrx4xrq599cgjx6-8080.app.github.dev';
+import { estilosLogin } from '../src/styles/estilosLogin';
+import { estilosGlobais } from '../src/styles/estilosGlobais';
+import { API_URL } from '../src/config';
 
 export default function TelaCadastro() {
   const router = useRouter();
 
-  const [nome, setNome]                               = useState<string>('');
-  const [email, setEmail]                             = useState<string>('');
-  const [senha, setSenha]                             = useState<string>('');
-  const [confirmarSenha, setConfirmarSenha]           = useState<string>('');
-  const [carregando, setCarregando]                   = useState<boolean>(false);
-  const [senhaVisivel, setSenhaVisivel]               = useState<boolean>(false); // ← olhinho senha
-  const [confirmarSenhaVisivel, setConfirmarSenhaVisivel] = useState<boolean>(false); // ← olhinho confirmar
+  // Estados dos campos do formulário
+  const [nome, setNome] = useState('');
+  const [email, setEmail] = useState('');
+  const [senha, setSenha] = useState('');
+  const [confirmarSenha, setConfirmarSenha] = useState('');
 
+  // Estados de controle da tela
+  const [carregando, setCarregando] = useState(false);
+  const [senhaVisivel, setSenhaVisivel] = useState(false);
+  const [confirmarSenhaVisivel, setConfirmarSenhaVisivel] = useState(false);
+
+  // Configura a barra de status
   useEffect(() => {
     StatusBar.setBarStyle('light-content');
     if (Platform.OS === 'android') {
@@ -43,64 +53,83 @@ export default function TelaCadastro() {
     }
   }, []);
 
-  const realizarCadastro = async () => {
+  // Função chamada ao pressionar "Finalizar Cadastro"
+  async function realizarCadastro() {
+    // Validações básicas
     if (!nome || !email || !senha || !confirmarSenha) {
       Alert.alert('Atenção', 'Por favor, preencha todos os campos.');
       return;
     }
+
     if (senha !== confirmarSenha) {
       Alert.alert('Atenção', 'As senhas não coincidem.');
       return;
     }
+
     if (senha.length < 6) {
       Alert.alert('Atenção', 'A senha deve ter pelo menos 6 caracteres.');
       return;
     }
+
     setCarregando(true);
+
     try {
+      // 1. Cria a conta no backend
       const respostaCadastro = await fetch(`${API_URL}/usuarios`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           nome: nome.trim(),
           email: email.toLowerCase().trim(),
-          senha,
+          senha: senha,
         }),
       });
+
+      // Se o email já está em uso
       if (respostaCadastro.status === 409) {
         Alert.alert('Atenção', 'E-mail já cadastrado. Tente fazer login.');
         return;
       }
+
+      // Se houve outro erro
       if (!respostaCadastro.ok) {
         Alert.alert('Erro', 'Não foi possível criar a conta. Tente novamente.');
         return;
       }
+
+      // 2. Faz login automático após criar a conta
       const respostaLogin = await fetch(`${API_URL}/usuarios/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: email.toLowerCase().trim(),
-          senha,
+          senha: senha,
         }),
       });
+
       if (respostaLogin.ok) {
         const dados = await respostaLogin.json();
+
+        // Salva os dados do usuário para uso em outras telas
         await AsyncStorage.setItem('@usuario_id', String(dados.id));
         await AsyncStorage.setItem('@usuario_nome', dados.nome);
         await AsyncStorage.setItem('@usuario_email', dados.email);
       }
+
+      // Sucesso! Vai para a tela principal
       Alert.alert('Sucesso!', 'Conta criada com sucesso!', [
         { text: 'OK', onPress: () => router.replace('/(tabs)/home') },
       ]);
+
     } catch (erro) {
       Alert.alert(
         'Erro de conexão',
-        'Não foi possível conectar ao servidor.\nVerifique se o back-end está rodando e se a URL do Codespace está correta.'
+        'Não foi possível conectar ao servidor.\nVerifique se o backend está rodando.'
       );
     } finally {
       setCarregando(false);
     }
-  };
+  }
 
   return (
     <ImageBackground
@@ -110,46 +139,48 @@ export default function TelaCadastro() {
       <View style={estilosLogin.peliculaEscura}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.flex1Width100}
+          style={{ flex: 1, width: '100%' }}
         >
           <ScrollView
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={styles.scroll}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            <View style={[estilosLogin.cartaoLogin, styles.cardAjustado]}>
+            <View style={[estilosLogin.cartaoLogin, styles.cartaoAjustado]}>
 
+              {/* Logo */}
               <View style={estilosLogin.iconeTopo}>
                 <Image
                   source={require('../src/assets/logo.png')}
-                  style={styles.logoInterna}
+                  style={{ width: 110, height: 110 }}
                   resizeMode="contain"
                 />
               </View>
 
-              <Text style={[estilosGlobais.subtitulo, { marginTop: 45 }]}>
+              {/* Subtítulo */}
+              <Text style={[estilosGlobais.subtitulo, { marginTop: 8 }]}>
                 Crie sua conta financeira.
               </Text>
 
-              {/* NOME */}
+              {/* Campo: Nome */}
               <View style={[estilosGlobais.grupoEntrada, { width: '100%' }]}>
                 <FontAwesome5 name="user" size={16} color="#9ca3af" style={estilosGlobais.iconeEspacamento} />
                 <TextInput
                   style={estilosGlobais.campoTexto}
                   placeholder="Nome completo"
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor="#6b7280"
                   value={nome}
                   onChangeText={setNome}
                 />
               </View>
 
-              {/* EMAIL */}
+              {/* Campo: Email */}
               <View style={[estilosGlobais.grupoEntrada, { width: '100%' }]}>
                 <FontAwesome5 name="envelope" size={16} color="#9ca3af" style={estilosGlobais.iconeEspacamento} />
                 <TextInput
                   style={estilosGlobais.campoTexto}
                   placeholder="E-mail"
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor="#6b7280"
                   keyboardType="email-address"
                   autoCapitalize="none"
                   value={email}
@@ -157,69 +188,54 @@ export default function TelaCadastro() {
                 />
               </View>
 
-              {/* SENHA com olhinho */}
+              {/* Campo: Senha com olhinho */}
               <View style={[estilosGlobais.grupoEntrada, { width: '100%' }]}>
                 <FontAwesome5 name="lock" size={16} color="#9ca3af" style={estilosGlobais.iconeEspacamento} />
                 <TextInput
                   style={[estilosGlobais.campoTexto, { flex: 1 }]}
-                  placeholder="Senha"
-                  placeholderTextColor="#9ca3af"
+                  placeholder="Senha (mínimo 6 caracteres)"
+                  placeholderTextColor="#6b7280"
                   secureTextEntry={!senhaVisivel}
                   value={senha}
                   onChangeText={setSenha}
                 />
-                <TouchableOpacity
-                  onPress={() => setSenhaVisivel(!senhaVisivel)}
-                  style={{ paddingHorizontal: 10 }}
-                >
-                  <FontAwesome5
-                    name={senhaVisivel ? 'eye-slash' : 'eye'}
-                    size={16}
-                    color="#9ca3af"
-                  />
+                <TouchableOpacity onPress={() => setSenhaVisivel(!senhaVisivel)} style={{ paddingHorizontal: 10 }}>
+                  <FontAwesome5 name={senhaVisivel ? 'eye-slash' : 'eye'} size={16} color="#9ca3af" />
                 </TouchableOpacity>
               </View>
 
-              {/* CONFIRMAR SENHA com olhinho */}
+              {/* Campo: Confirmar Senha com olhinho */}
               <View style={[estilosGlobais.grupoEntrada, { width: '100%' }]}>
                 <FontAwesome5 name="check-circle" size={16} color="#9ca3af" style={estilosGlobais.iconeEspacamento} />
                 <TextInput
                   style={[estilosGlobais.campoTexto, { flex: 1 }]}
-                  placeholder="Confirmar Senha"
-                  placeholderTextColor="#9ca3af"
+                  placeholder="Confirmar senha"
+                  placeholderTextColor="#6b7280"
                   secureTextEntry={!confirmarSenhaVisivel}
                   value={confirmarSenha}
                   onChangeText={setConfirmarSenha}
                 />
-                <TouchableOpacity
-                  onPress={() => setConfirmarSenhaVisivel(!confirmarSenhaVisivel)}
-                  style={{ paddingHorizontal: 10 }}
-                >
-                  <FontAwesome5
-                    name={confirmarSenhaVisivel ? 'eye-slash' : 'eye'}
-                    size={16}
-                    color="#9ca3af"
-                  />
+                <TouchableOpacity onPress={() => setConfirmarSenhaVisivel(!confirmarSenhaVisivel)} style={{ paddingHorizontal: 10 }}>
+                  <FontAwesome5 name={confirmarSenhaVisivel ? 'eye-slash' : 'eye'} size={16} color="#9ca3af" />
                 </TouchableOpacity>
               </View>
 
-              {/* BOTÃO */}
+              {/* Botão principal */}
               <TouchableOpacity
-                style={[estilosGlobais.botaoPrimario, { width: '100%', opacity: carregando ? 0.7 : 1 }]}
+                style={[estilosGlobais.botaoPrimario, { opacity: carregando ? 0.7 : 1 }]}
                 onPress={realizarCadastro}
                 disabled={carregando}
               >
-                {carregando ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={estilosGlobais.textoBotaoPrimario}>Finalizar Cadastro</Text>
-                )}
+                {carregando
+                  ? <ActivityIndicator color="#fff" />
+                  : <Text style={estilosGlobais.textoBotaoPrimario}>Finalizar Cadastro</Text>
+                }
               </TouchableOpacity>
 
-              {/* LINK LOGIN */}
+              {/* Link para voltar ao login */}
               <TouchableOpacity style={styles.linkEntrar} onPress={() => router.back()}>
-                <Text style={{ color: '#4b5563' }}>Já tem conta?</Text>
-                <Text style={estilosGlobais.textoLink}>{' '}Entrar</Text>
+                <Text style={{ color: '#9ca3af', fontSize: 14 }}>Já tem conta? </Text>
+                <Text style={estilosGlobais.textoLink}>Entrar</Text>
               </TouchableOpacity>
 
             </View>
@@ -231,15 +247,28 @@ export default function TelaCadastro() {
 }
 
 const styles = StyleSheet.create({
-  flex1Width100: { flex: 1, width: '100%' },
-  scrollContent: {
+  // ScrollView centraliza o conteúdo verticalmente
+  scroll: {
     flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 80,
+    paddingTop: 60,
     paddingBottom: 40,
+    paddingHorizontal: 24,
   },
-  cardAjustado: { width: '90%', maxWidth: 360, alignItems: 'center', marginTop: 0 },
-  logoInterna: { width: 210, height: 210, alignSelf: 'center' },
-  linkEntrar: { flexDirection: 'row', marginTop: 20, marginBottom: 10, justifyContent: 'center' },
+
+  // Ajuste extra no cartão para tela de cadastro
+  cartaoAjustado: {
+    width: '100%',
+    maxWidth: 360,
+    alignItems: 'center',
+  },
+
+  // Link "Já tem conta? Entrar"
+  linkEntrar: {
+    flexDirection: 'row',
+    marginTop: 20,
+    marginBottom: 10,
+    justifyContent: 'center',
+  },
 });
