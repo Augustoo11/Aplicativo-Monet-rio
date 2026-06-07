@@ -23,6 +23,7 @@ public class Transacao implements Serializable {
     @JoinColumn(name = "categoria_id", nullable = false)
     private Categoria categoria;
 
+    // tipo: "receita" ou "despesa"
     @Column(nullable = false)
     private String tipo;
 
@@ -33,6 +34,17 @@ public class Transacao implements Serializable {
 
     @Column(nullable = false)
     private LocalDate data;
+
+    // ✅ NOVO CAMPO: indica se esta despesa está vinculada a uma meta
+    // true  → despesa de meta (cor AMARELA no app)
+    // false → despesa normal  (cor VERMELHA no app)
+    // Para receitas, este campo é ignorado (sempre false)
+    @Column(name = "eh_meta", nullable = false)
+    private boolean ehMeta = false;
+
+    // ID da meta vinculada (só preenchido quando ehMeta = true)
+    @Column(name = "meta_id")
+    private Long metaId;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -73,6 +85,14 @@ public class Transacao implements Serializable {
 
     public LocalDate getData()                  { return data; }
     public void setData(LocalDate data)         { this.data = data; }
+
+    // ✅ Getter e setter do novo campo ehMeta
+    public boolean isEhMeta()                   { return ehMeta; }
+    public void setEhMeta(boolean ehMeta)       { this.ehMeta = ehMeta; }
+
+    // ✅ Getter e setter do metaId vinculado
+    public Long getMetaId()                     { return metaId; }
+    public void setMetaId(Long metaId)          { this.metaId = metaId; }
 
     public LocalDateTime getCreatedAt()         { return createdAt; }
     public void setCreatedAt(LocalDateTime v)   { this.createdAt = v; }

@@ -1,11 +1,7 @@
 // src/styles/estilosLogin.ts
-// ─────────────────────────────────────────────────────────────
 // Estilos específicos das telas de Login e Cadastro.
-// ─────────────────────────────────────────────────────────────
 
-import { StyleSheet, Dimensions } from 'react-native';
-
-const { height } = Dimensions.get('window');
+import { StyleSheet } from 'react-native';
 
 export const estilosLogin = StyleSheet.create({
 
@@ -33,7 +29,7 @@ export const estilosLogin = StyleSheet.create({
     paddingHorizontal: 24,
   },
 
-  // Cartão branco/escuro que contém os campos de login
+  // Cartão que contém os campos de login
   cartaoLogin: {
     width: '100%',
     maxWidth: 360,
@@ -45,9 +41,16 @@ export const estilosLogin = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.08)',
   },
 
-  // Área do ícone/logo no topo do cartão
+  // ✅ CORRIGIDO: área do logo no topo — tamanho restaurado
   iconeTopo: {
-    marginBottom: 8,
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+
+  // ✅ CORRIGIDO: tamanho da logo restaurado para o original
+  logo: {
+    width: 160,
+    height: 160,
   },
 
   // Botão de "Esqueceu a senha?"

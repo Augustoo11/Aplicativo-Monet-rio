@@ -1,12 +1,15 @@
 package com.Projeto.GestorFin.controllers;
 
+import com.Projeto.GestorFin.entities.Meta;
 import com.Projeto.GestorFin.entities.Transacao;
 import com.Projeto.GestorFin.repositories.CategoriaRepository;
+import com.Projeto.GestorFin.repositories.MetaRepository;
 import com.Projeto.GestorFin.repositories.TransacaoRepository;
 import com.Projeto.GestorFin.repositories.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -21,6 +24,9 @@ public class TransacaoController {
 
     @Autowired
     CategoriaRepository categoriaRepository;
+
+    @Autowired
+    MetaRepository metaRepository;
 
     // POST /transacoes → Cria uma transação
     @PostMapping("/transacoes")
@@ -47,6 +53,31 @@ public class TransacaoController {
             return "Erro: categoria não encontrada.";
         }
 
+        // ✅ NOVA LÓGICA: Se for despesa de meta, atualiza o valor da meta no banco
+        // Se ehMeta = true e metaId foi informado, somamos o valor à meta vinculada
+        if (tipo.equals("despesa") && transacao.isEhMeta() && transacao.getMetaId() != null) {
+
+            Optional<Meta> metaOpcional = metaRepository.findById(transacao.getMetaId());
+
+            if (metaOpcional.isEmpty()) {
+                return "Erro: meta não encontrada com id " + transacao.getMetaId();
+            }
+
+            Meta meta = metaOpcional.get();
+
+            // Soma o valor pago à meta no valorAtual
+            BigDecimal novoValorAtual = meta.getValorAtual().add(transacao.getValor());
+            meta.setValorAtual(novoValorAtual);
+
+            // Se atingiu ou ultrapassou o alvo, marca como concluída automaticamente
+            if (novoValorAtual.compareTo(meta.getValorAlvo()) >= 0) {
+                meta.setStatus("concluida");
+            }
+
+            metaRepository.save(meta);
+        }
+
+        // Salva a transação normalmente
         transacaoRepository.save(transacao);
         return "Transação salva com sucesso!";
     }
@@ -89,6 +120,8 @@ public class TransacaoController {
             existente.setValor(transacao.getValor());
             existente.setDescricao(transacao.getDescricao());
             existente.setData(transacao.getData());
+            existente.setEhMeta(transacao.isEhMeta());
+            existente.setMetaId(transacao.getMetaId());
             if (transacao.getCategoria() != null) {
                 existente.setCategoria(transacao.getCategoria());
             }

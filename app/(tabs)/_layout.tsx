@@ -1,9 +1,7 @@
 // app/(tabs)/_layout.tsx
 // ─────────────────────────────────────────────────────────────
-// Layout das abas — define a navegação entre as telas
-// Home, Add e Relatórios (Menu).
-// Usamos Stack em vez de Tabs porque a navegação inferior
-// foi feita manualmente no arquivo home.tsx.
+// Layout das abas — define as telas disponíveis no app.
+// ✅ NOVO: adicionadas as telas Configuracoes e Metas.
 // ─────────────────────────────────────────────────────────────
 
 import { Stack } from 'expo-router';
@@ -14,13 +12,16 @@ export default function LayoutTabs() {
       screenOptions={{
         headerShown: false,
         contentStyle: {
-          backgroundColor: '#0F172A', // fundo escuro padrão
+          backgroundColor: '#0F172A',
         },
       }}
     >
       <Stack.Screen name="home" />
       <Stack.Screen name="add" />
       <Stack.Screen name="Menu" />
+      {/* ✅ NOVAS TELAS */}
+      <Stack.Screen name="Configuracoes" />
+      <Stack.Screen name="Metas" />
     </Stack>
   );
 }
