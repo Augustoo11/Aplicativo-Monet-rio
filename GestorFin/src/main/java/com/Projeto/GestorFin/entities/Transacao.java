@@ -35,14 +35,13 @@ public class Transacao implements Serializable {
     @Column(nullable = false)
     private LocalDate data;
 
-    // ✅ NOVO CAMPO: indica se esta despesa está vinculada a uma meta
-    // true  → despesa de meta (cor AMARELA no app)
-    // false → despesa normal  (cor VERMELHA no app)
-    // Para receitas, este campo é ignorado (sempre false)
+    // ehMeta = true  → despesa de meta   (aparece em AMARELO no app)
+    // ehMeta = false → despesa normal    (aparece em VERMELHO no app)
+    // Para receitas, este campo é sempre false (não tem efeito)
     @Column(name = "eh_meta", nullable = false)
     private boolean ehMeta = false;
 
-    // ID da meta vinculada (só preenchido quando ehMeta = true)
+    // ID da meta vinculada — só preenchido quando ehMeta = true
     @Column(name = "meta_id")
     private Long metaId;
 
@@ -65,38 +64,36 @@ public class Transacao implements Serializable {
 
     public Transacao() {}
 
-    public Long getId()                         { return id; }
-    public void setId(Long id)                  { this.id = id; }
+    public Long getId()                          { return id; }
+    public void setId(Long id)                   { this.id = id; }
 
-    public Usuario getUsuario()                 { return usuario; }
-    public void setUsuario(Usuario usuario)     { this.usuario = usuario; }
+    public Usuario getUsuario()                  { return usuario; }
+    public void setUsuario(Usuario usuario)      { this.usuario = usuario; }
 
-    public Categoria getCategoria()                 { return categoria; }
-    public void setCategoria(Categoria categoria)   { this.categoria = categoria; }
+    public Categoria getCategoria()              { return categoria; }
+    public void setCategoria(Categoria c)        { this.categoria = c; }
 
-    public String getTipo()                     { return tipo; }
-    public void setTipo(String tipo)            { this.tipo = tipo; }
+    public String getTipo()                      { return tipo; }
+    public void setTipo(String tipo)             { this.tipo = tipo; }
 
-    public BigDecimal getValor()                { return valor; }
-    public void setValor(BigDecimal valor)      { this.valor = valor; }
+    public BigDecimal getValor()                 { return valor; }
+    public void setValor(BigDecimal valor)       { this.valor = valor; }
 
-    public String getDescricao()                { return descricao; }
-    public void setDescricao(String descricao)  { this.descricao = descricao; }
+    public String getDescricao()                 { return descricao; }
+    public void setDescricao(String descricao)   { this.descricao = descricao; }
 
-    public LocalDate getData()                  { return data; }
-    public void setData(LocalDate data)         { this.data = data; }
+    public LocalDate getData()                   { return data; }
+    public void setData(LocalDate data)          { this.data = data; }
 
-    // ✅ Getter e setter do novo campo ehMeta
-    public boolean isEhMeta()                   { return ehMeta; }
-    public void setEhMeta(boolean ehMeta)       { this.ehMeta = ehMeta; }
+    public boolean isEhMeta()                    { return ehMeta; }
+    public void setEhMeta(boolean ehMeta)        { this.ehMeta = ehMeta; }
 
-    // ✅ Getter e setter do metaId vinculado
-    public Long getMetaId()                     { return metaId; }
-    public void setMetaId(Long metaId)          { this.metaId = metaId; }
+    public Long getMetaId()                      { return metaId; }
+    public void setMetaId(Long metaId)           { this.metaId = metaId; }
 
-    public LocalDateTime getCreatedAt()         { return createdAt; }
-    public void setCreatedAt(LocalDateTime v)   { this.createdAt = v; }
+    public LocalDateTime getCreatedAt()          { return createdAt; }
+    public void setCreatedAt(LocalDateTime v)    { this.createdAt = v; }
 
-    public LocalDateTime getUpdatedAt()         { return updatedAt; }
-    public void setUpdatedAt(LocalDateTime v)   { this.updatedAt = v; }
+    public LocalDateTime getUpdatedAt()          { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime v)    { this.updatedAt = v; }
 }

@@ -6,7 +6,7 @@
 
 // URL do backend Spring Boot
 // ⚠️ Não coloque barra "/" no final!
-export const API_URL = 'https://fuzzy-invention-w9xpq4vv94h5j44-8080.app.github.dev';
+export const API_URL = 'https://humble-guide-jrjj9g9jp7vrhp55r-8080.app.github.dev';
 
 // Lista de categorias de DESPESA que aparecem no app
 // Esses nomes precisam existir no banco de dados!

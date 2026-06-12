@@ -6,6 +6,8 @@ package com.Projeto.GestorFin.controllers;
 import com.Projeto.GestorFin.entities.Usuario;
 import com.Projeto.GestorFin.repositories.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -19,14 +21,47 @@ public class UsuarioController {
     @Autowired
     UsuarioRepository usuarioRepository; // ← professora não usa private aqui
 
+    // -------------------------------------------------------
     // POST /usuarios → Cria usuário
+    // ✅ AJUSTADO: agora retorna o status HTTP correto
+    //   - 201 → conta criada com sucesso
+    //   - 409 → já existe um usuário com esse e-mail
+    //   - 400 → faltou nome, email ou senha
+    //   - 500 → erro inesperado ao salvar no banco
+    //           (a mensagem real do erro vai no corpo da resposta,
+    //            isso ajuda muito a descobrir o que está errado)
+    // -------------------------------------------------------
     @PostMapping("/usuarios")
-    public String saveUsuario(@RequestBody Usuario usuario) {
-        if (usuarioRepository.existsByEmail(usuario.getEmail())) {
-            return "Erro: já existe um usuário com este email.";
+    public ResponseEntity<String> saveUsuario(@RequestBody Usuario usuario) {
+
+        // Validação simples dos campos obrigatórios
+        if (usuario.getNome() == null || usuario.getNome().trim().isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Erro: informe o nome.");
         }
-        usuarioRepository.save(usuario);
-        return "Usuário salvo com sucesso!";
+        if (usuario.getEmail() == null || usuario.getEmail().trim().isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Erro: informe o e-mail.");
+        }
+        if (usuario.getSenha() == null || usuario.getSenha().trim().isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Erro: informe a senha.");
+        }
+
+        // Verifica se já existe um usuário com esse e-mail
+        if (usuarioRepository.existsByEmail(usuario.getEmail())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body("Erro: já existe um usuário com este email.");
+        }
+
+        // ✅ Tenta salvar e, se der algum erro inesperado no banco,
+        //    devolve a mensagem real do erro (em vez de travar com 500 "vazio")
+        try {
+            usuarioRepository.save(usuario);
+            return ResponseEntity.status(HttpStatus.CREATED).body("Usuário salvo com sucesso!");
+        } catch (Exception e) {
+            // Imprime o erro completo no console do backend (Codespace) para debug
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Erro ao salvar usuário: " + e.getMessage());
+        }
     }
 
     // POST /usuarios/login → Login

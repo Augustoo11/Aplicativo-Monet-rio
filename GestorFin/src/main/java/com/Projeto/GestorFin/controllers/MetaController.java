@@ -20,20 +20,21 @@ public class MetaController {
 
     // -------------------------------------------------------
     // POST /metas → Cria uma nova meta
+    //
     // JSON esperado:
     // {
     //   "usuario":    { "id": "id-do-usuario" },
-    //   "nome":       "Reserva de emergência",
+    //   "nome":       "Viagem para Europa",
     //   "valorAlvo":  10000.00,
     //   "valorAtual": 0,
-    //   "dataLimite": "2026-12-31",
+    //   "dataLimite": "2026-12-31",   ← opcional
     //   "status":     "em_andamento"
     // }
     // -------------------------------------------------------
     @PostMapping("/metas")
     public String saveMeta(@RequestBody Meta meta) {
 
-        // Verifica se o usuário foi informado
+        // Usuário obrigatório
         if (meta.getUsuario() == null || meta.getUsuario().getId() == null) {
             return "Erro: informe o id do usuário.";
         }
@@ -43,16 +44,17 @@ public class MetaController {
             return "Erro: usuário não encontrado.";
         }
 
-        // Verifica se o valor alvo foi informado e é positivo
+        // Valor alvo deve ser positivo
         if (meta.getValorAlvo() == null || meta.getValorAlvo().doubleValue() <= 0) {
             return "Erro: valor alvo deve ser maior que zero.";
         }
 
-        // Valida o status — aceita apenas os 3 valores permitidos
+        // Status aceita apenas 3 valores
         String status = meta.getStatus();
-        if (status != null && !status.equals("em_andamento")
-                           && !status.equals("concluida")
-                           && !status.equals("cancelada")) {
+        if (status != null
+                && !status.equals("em_andamento")
+                && !status.equals("concluida")
+                && !status.equals("cancelada")) {
             return "Erro: status deve ser 'em_andamento', 'concluida' ou 'cancelada'.";
         }
 
@@ -89,7 +91,7 @@ public class MetaController {
 
     // -------------------------------------------------------
     // GET /metas/usuario/{usuarioId}/status/{status}
-    // Lista metas de um usuário filtradas por status
+    // Lista metas filtradas por status
     // Ex: GET /metas/usuario/abc123/status/em_andamento
     // -------------------------------------------------------
     @GetMapping("/metas/usuario/{usuarioId}/status/{status}")

@@ -1,14 +1,21 @@
 // src/store/src/store/useTransacoesStore.ts
-// Store global de transações.
+// Store global de transações (usando Zustand)
 //
-// ✅ REGRA DO SALDO:
-//   saldo = receitas - despesas normais - despesas de meta
-//   Ou seja: despesas de meta SÃO descontadas do saldo disponível.
-//   A diferença é só visual: na tela elas aparecem em AMARELO,
-//   enquanto despesas normais aparecem em VERMELHO.
+// O QUE ESSE ARQUIVO FAZ:
+//   - Guarda todas as transações do usuário na memória
+//   - Calcula o total de receitas, despesas e saldo
+//
+// REGRA DO SALDO:
+//   saldo = receitas - TODAS as despesas (normais + de meta)
+//
+//   A diferença entre despesa normal e despesa de meta é APENAS visual:
+//   - Despesa de meta  → aparece em AMARELO na tela
+//   - Despesa normal   → aparece em VERMELHO na tela
+//   Ambas reduzem o saldo disponível da mesma forma.
 
 import { create } from 'zustand';
 
+// Tipo de uma transação no store
 type Transacao = {
   id: string;
   tipo: 'receita' | 'despesa';
@@ -18,57 +25,65 @@ type Transacao = {
   categoriaLabel: string;
   descricao: string;
   data: Date;
-  ehMeta: boolean;   // true = despesa vinculada a uma meta (amarela)
-  metaId: number | null;
+  ehMeta: boolean;        // true = despesa de meta (amarela), false = normal (vermelha)
+  metaId: number | null;  // ID da meta vinculada (só quando ehMeta = true)
 };
 
+// Tipo para agrupar despesas por categoria
 type ResumoPorCategoria = {
   categoriaId: string;
   label: string;
   total: number;
 };
 
+// Tipo do store completo
 type Store = {
   transacoes: Transacao[];
   setTransacoesDoBanco: (novas: Transacao[]) => void;
   limparTransacoes: () => void;
   totalReceitas: () => number;
-  totalDespesas: () => number; // inclui normais + de meta
-  saldo: () => number;         // receitas - todas as despesas
+  totalDespesas: () => number;
+  saldo: () => number;
   totalPorCategoria: () => ResumoPorCategoria[];
 };
 
 export const useTransacoesStore = create<Store>((set, get) => ({
+  // Lista de transações — começa vazia
   transacoes: [],
 
+  // Substitui a lista de transações com os dados do banco
   setTransacoesDoBanco: (novas) => set({ transacoes: novas }),
 
+  // Limpa tudo (usado no logout)
   limparTransacoes: () => set({ transacoes: [] }),
 
   // Soma de todas as receitas
   totalReceitas: () =>
     get()
-      .transacoes.filter((t) => t.tipo === 'receita')
+      .transacoes
+      .filter((t) => t.tipo === 'receita')
       .reduce((total, t) => total + t.valor, 0),
 
-  // ✅ Soma TODAS as despesas (normais + de meta)
-  // Despesas de meta reduzem o saldo disponível, assim como as normais.
-  // A diferença entre elas é apenas a cor na tela (vermelho vs amarelo).
+  // Soma de TODAS as despesas (normais + de meta)
+  // Despesas de meta reduzem o saldo tanto quanto as normais.
+  // A única diferença é a cor que aparece na tela.
   totalDespesas: () =>
     get()
-      .transacoes.filter((t) => t.tipo === 'despesa')
+      .transacoes
+      .filter((t) => t.tipo === 'despesa')
       .reduce((total, t) => total + t.valor, 0),
 
   // Saldo = receitas - todas as despesas
   saldo: () => get().totalReceitas() - get().totalDespesas(),
 
-  // Agrupa despesas normais por categoria (para os relatórios)
-  // Despesas de meta não entram no agrupamento por categoria
+  // Agrupa as despesas NORMAIS por categoria (para relatórios)
+  // Despesas de meta não entram nesse agrupamento
   totalPorCategoria: () => {
     const grupos: Record<string, ResumoPorCategoria> = {};
 
     get()
-      .transacoes.filter((t) => t.tipo === 'despesa' && !t.ehMeta)
+      .transacoes
+      .filter((t) => t.tipo === 'despesa' && !t.ehMeta)
       .forEach((t) => {
         if (!grupos[t.categoriaId]) {
           grupos[t.categoriaId] = {
@@ -80,6 +95,7 @@ export const useTransacoesStore = create<Store>((set, get) => ({
         grupos[t.categoriaId].total += t.valor;
       });
 
+    // Retorna ordenado do maior para o menor
     return Object.values(grupos).sort((a, b) => b.total - a.total);
   },
 }));

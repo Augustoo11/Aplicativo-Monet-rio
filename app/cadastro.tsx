@@ -85,15 +85,21 @@ export default function TelaCadastro() {
         }),
       });
 
-      // Se o email já está em uso
+      // ✅ Lê o texto da resposta sempre, pois o backend agora
+      // retorna mensagens explicando o que aconteceu
+      const textoResposta = await respostaCadastro.text();
+
+      // Se o email já está em uso (status 409)
       if (respostaCadastro.status === 409) {
         Alert.alert('Atenção', 'E-mail já cadastrado. Tente fazer login.');
         return;
       }
 
-      // Se houve outro erro
+      // Se houve outro erro (400, 500, etc)
+      // ✅ Agora mostramos a mensagem real que veio do backend,
+      // assim fica fácil descobrir o motivo do erro
       if (!respostaCadastro.ok) {
-        Alert.alert('Erro', 'Não foi possível criar a conta. Tente novamente.');
+        Alert.alert('Erro', textoResposta || 'Não foi possível criar a conta. Tente novamente.');
         return;
       }
 
@@ -122,6 +128,8 @@ export default function TelaCadastro() {
       ]);
 
     } catch (erro) {
+      // ✅ Mostra o erro real no console também, ajuda a debugar
+      console.log('Erro ao cadastrar:', erro);
       Alert.alert(
         'Erro de conexão',
         'Não foi possível conectar ao servidor.\nVerifique se o backend está rodando.'

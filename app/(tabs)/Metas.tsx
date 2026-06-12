@@ -1,8 +1,4 @@
 // app/(tabs)/Metas.tsx
-// Tela de Metas — estilos separados em estilosMetas.ts
-// ✅ UX melhorada: banner de resumo, cards mais ricos
-// ✅ NOVO: botão "Contribuir" dentro de cada meta
-// ✅ NOVO: despesas de meta reduzem o valor líquido (via store)
 
 import React, { useEffect, useState } from 'react';
 import {
@@ -23,9 +19,8 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { API_URL, CORES } from '../../src/config';
-import { estilosMetas } from './estilosMetas';
+import { estilosMetas } from '../../src/styles/estilosMetas';
 
-// Tipo de uma meta vinda do banco
 type Meta = {
   id: number;
   nome: string;
@@ -35,6 +30,13 @@ type Meta = {
   status: string;
 };
 
+// Meses em português para o seletor de data
+const MESES = [
+  'Janeiro', 'Fevereiro', 'Março', 'Abril',
+  'Maio', 'Junho', 'Julho', 'Agosto',
+  'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+];
+
 export default function Metas() {
   const router = useRouter();
 
@@ -42,17 +44,22 @@ export default function Metas() {
   const [metas, setMetas] = useState<Meta[]>([]);
   const [carregando, setCarregando] = useState(true);
 
-  // Modal de criar nova meta
+  // ── Modal: Nova meta ──────────────────────────────────────
   const [modalNovaMeta, setModalNovaMeta] = useState(false);
   const [nomeMeta, setNomeMeta] = useState('');
-  const [valorAlvo, setValorAlvo] = useState('');
-  const [dataLimite, setDataLimite] = useState('');
+  const [valorAlvo, setValorAlvo] = useState('');          // guardado como "R$ 1.000,00"
   const [salvando, setSalvando] = useState(false);
 
-  // ✅ NOVO: Modal de contribuição (adicionar valor a uma meta existente)
+  // Seletor de data: dia, mês, ano separados
+  const [usarDataLimite, setUsarDataLimite] = useState(false);
+  const [diaSelecionado, setDiaSelecionado] = useState(1);
+  const [mesSelecionado, setMesSelecionado] = useState(new Date().getMonth()); // 0-11
+  const [anoSelecionado, setAnoSelecionado] = useState(new Date().getFullYear() + 1);
+
+  // ── Modal: Contribuição ───────────────────────────────────
   const [modalContribuir, setModalContribuir] = useState(false);
   const [metaParaContribuir, setMetaParaContribuir] = useState<Meta | null>(null);
-  const [valorContribuicao, setValorContribuicao] = useState('');
+  const [valorContribuicao, setValorContribuicao] = useState(''); // guardado como "R$ 200,00"
   const [contribuindo, setContribuindo] = useState(false);
 
   useEffect(() => {
@@ -65,15 +72,11 @@ export default function Metas() {
     if (id) await buscarMetas(id);
   }
 
-  // ─── Busca metas do banco ──────────────────────────────────
   async function buscarMetas(idDoUsuario: string) {
     setCarregando(true);
     try {
       const resposta = await fetch(`${API_URL}/metas/usuario/${idDoUsuario}`);
-      if (resposta.ok) {
-        const dados = await resposta.json();
-        setMetas(dados);
-      }
+      if (resposta.ok) setMetas(await resposta.json());
     } catch {
       Alert.alert('Erro de conexão', 'Não foi possível buscar as metas.');
     } finally {
@@ -81,15 +84,43 @@ export default function Metas() {
     }
   }
 
-  // ─── Salva nova meta no banco ──────────────────────────────
+  // ── Converte "R$ 1.000,00" → 1000.00 ──────────────────────
+  function mascaraParaNumero(texto: string): number {
+    const limpo = texto.replace(/\D/g, '');
+    if (!limpo) return 0;
+    return parseInt(limpo) / 100;
+  }
+
+  // ── Formata enquanto digita: "1000" → "R$ 10,00" ──────────
+  function formatarValorInput(texto: string): string {
+    const somenteNumeros = texto.replace(/\D/g, '');
+    if (!somenteNumeros) return '';
+    const numero = parseInt(somenteNumeros) / 100;
+    return `R$ ${numero.toFixed(2).replace('.', ',')}`;
+  }
+
+  // ── Monta a data limite no formato "AAAA-MM-DD" ────────────
+  function montarDataLimite(): string | null {
+    if (!usarDataLimite) return null;
+    const mes = String(mesSelecionado + 1).padStart(2, '0');
+    const dia = String(diaSelecionado).padStart(2, '0');
+    return `${anoSelecionado}-${mes}-${dia}`;
+  }
+
+  // ── Quantos dias tem o mês/ano selecionado ─────────────────
+  function diasNoMes(mes: number, ano: number): number {
+    return new Date(ano, mes + 1, 0).getDate();
+  }
+
+  // ── Salva a nova meta ──────────────────────────────────────
   async function salvarMeta() {
     if (!nomeMeta.trim()) {
       Alert.alert('Atenção', 'Digite o nome da meta.');
       return;
     }
-    const valorNumerico = parseFloat(valorAlvo.replace(',', '.'));
-    if (isNaN(valorNumerico) || valorNumerico <= 0) {
-      Alert.alert('Atenção', 'Digite um valor alvo válido.');
+    const valorNumerico = mascaraParaNumero(valorAlvo);
+    if (valorNumerico <= 0) {
+      Alert.alert('Atenção', 'Digite um valor objetivo válido.');
       return;
     }
     if (!usuarioId) return;
@@ -103,7 +134,9 @@ export default function Metas() {
         valorAtual: 0,
         status: 'em_andamento',
       };
-      if (dataLimite.trim()) novaMeta.dataLimite = dataLimite.trim();
+
+      const dataLimite = montarDataLimite();
+      if (dataLimite) novaMeta.dataLimite = dataLimite;
 
       const resposta = await fetch(`${API_URL}/metas`, {
         method: 'POST',
@@ -126,26 +159,22 @@ export default function Metas() {
     }
   }
 
-  // ✅ NOVO: Contribuir com um valor para uma meta
-  // Isso atualiza diretamente o valorAtual da meta no banco via PUT
+  // ── Contribui com um valor para uma meta existente ─────────
   async function contribuirParaMeta() {
     if (!metaParaContribuir) return;
 
-    const valor = parseFloat(valorContribuicao.replace(',', '.'));
-    if (isNaN(valor) || valor <= 0) {
+    const valor = mascaraParaNumero(valorContribuicao);
+    if (valor <= 0) {
       Alert.alert('Atenção', 'Digite um valor válido.');
       return;
     }
 
     setContribuindo(true);
     try {
-      // Calcula o novo valor acumulado
       const novoValorAtual = metaParaContribuir.valorAtual + valor;
-      const novoStatus = novoValorAtual >= metaParaContribuir.valorAlvo
-        ? 'concluida'
-        : 'em_andamento';
+      const novoStatus =
+        novoValorAtual >= metaParaContribuir.valorAlvo ? 'concluida' : 'em_andamento';
 
-      // Atualiza a meta via PUT
       const resposta = await fetch(`${API_URL}/metas/${metaParaContribuir.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -159,9 +188,10 @@ export default function Metas() {
       });
 
       if (resposta.ok) {
-        const msg = novoStatus === 'concluida'
-          ? '🎉 Meta concluída! Parabéns!'
-          : 'Contribuição adicionada!';
+        const msg =
+          novoStatus === 'concluida'
+            ? '🎉 Meta concluída! Parabéns!'
+            : 'Contribuição adicionada!';
         Alert.alert('Sucesso!', msg);
         fecharModalContribuir();
         if (usuarioId) await buscarMetas(usuarioId);
@@ -175,7 +205,7 @@ export default function Metas() {
     }
   }
 
-  // ─── Exclui uma meta ───────────────────────────────────────
+  // ── Exclui meta ────────────────────────────────────────────
   async function excluirMeta(id: number) {
     Alert.alert('Excluir meta', 'Tem certeza que quer excluir esta meta?', [
       { text: 'Cancelar', style: 'cancel' },
@@ -209,20 +239,29 @@ export default function Metas() {
   function fecharModalNovaMeta() {
     setNomeMeta('');
     setValorAlvo('');
-    setDataLimite('');
+    setUsarDataLimite(false);
+    setDiaSelecionado(1);
+    setMesSelecionado(new Date().getMonth());
+    setAnoSelecionado(new Date().getFullYear() + 1);
     setModalNovaMeta(false);
   }
 
-  function formatarMoeda(valor: number) {
-    return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  function formatarMoeda(v: number) {
+    return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   }
 
-  // ─── Dados do banner de resumo ─────────────────────────────
   const totalMetas = metas.length;
   const metasConcluidas = metas.filter((m) => m.status === 'concluida').length;
   const totalAcumulado = metas.reduce((acc, m) => acc + m.valorAtual, 0);
 
-  // ─── Renderização ─────────────────────────────────────────
+  // Anos disponíveis no seletor: ano atual até +10
+  const anoAtual = new Date().getFullYear();
+  const anos = Array.from({ length: 11 }, (_, i) => anoAtual + i);
+
+  // Dias disponíveis para o mês/ano selecionado
+  const totalDias = diasNoMes(mesSelecionado, anoSelecionado);
+  const dias = Array.from({ length: totalDias }, (_, i) => i + 1);
+
   return (
     <SafeAreaView style={estilosMetas.container}>
 
@@ -231,7 +270,7 @@ export default function Metas() {
         <TouchableOpacity onPress={() => router.back()} style={estilosMetas.botaoVoltar}>
           <Ionicons name="arrow-back" size={24} color={CORES.textoClaro} />
         </TouchableOpacity>
-        <Text style={estilosMetas.titulo}>Metas</Text>
+        <Text style={estilosMetas.titulo}>Minhas Metas</Text>
         <TouchableOpacity
           style={estilosMetas.botaoNovaMeta}
           onPress={() => setModalNovaMeta(true)}
@@ -245,9 +284,11 @@ export default function Metas() {
       )}
 
       {!carregando && (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
-
-          {/* ✅ NOVO: Banner de resumo — aparece sempre que há metas */}
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 40 }}
+        >
+          {/* Banner de resumo */}
           {totalMetas > 0 && (
             <View style={estilosMetas.bannerResumo}>
               <View style={estilosMetas.bannerItem}>
@@ -285,7 +326,7 @@ export default function Metas() {
                 style={estilosMetas.botaoPrimeiraMeta}
                 onPress={() => setModalNovaMeta(true)}
               >
-                <Text style={estilosMetas.botaoPrimeiraMetaTexto}>Criar primeira meta</Text>
+                <Text style={estilosMetas.botaoPrimeiraMetaTexto}>+ Criar primeira meta</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -293,11 +334,11 @@ export default function Metas() {
           {/* Lista de metas */}
           {metas.map((meta) => {
             const progresso =
-              meta.valorAlvo <= 0 ? 0 : Math.min((meta.valorAtual / meta.valorAlvo) * 100, 100);
+              meta.valorAlvo <= 0
+                ? 0
+                : Math.min((meta.valorAtual / meta.valorAlvo) * 100, 100);
             const concluida = meta.status === 'concluida';
             const falta = Math.max(meta.valorAlvo - meta.valorAtual, 0);
-            const corStatus = concluida ? CORES.verde : '#FACC15';
-            const textoStatus = concluida ? '✅ Concluída' : '🟡 Em andamento';
 
             return (
               <View style={estilosMetas.cartaoMeta} key={meta.id}>
@@ -309,13 +350,16 @@ export default function Metas() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={estilosMetas.nomeMeta}>{meta.nome}</Text>
-                    <Text style={[estilosMetas.statusMeta, { color: corStatus }]}>
-                      {textoStatus}
+                    <Text
+                      style={[
+                        estilosMetas.statusMeta,
+                        { color: concluida ? CORES.verde : '#FACC15' },
+                      ]}
+                    >
+                      {concluida ? '✅ Concluída' : '🟡 Em andamento'}
                     </Text>
                   </View>
-                  {/* Ações: Contribuir + Excluir */}
                   <View style={estilosMetas.acoesCartao}>
-                    {/* ✅ NOVO: botão Contribuir — só aparece se não estiver concluída */}
                     {!concluida && (
                       <TouchableOpacity
                         style={estilosMetas.botaoContribuir}
@@ -372,7 +416,6 @@ export default function Metas() {
                 </View>
                 <Text style={estilosMetas.percentual}>{progresso.toFixed(0)}% concluído</Text>
 
-                {/* Mensagem de parabéns */}
                 {concluida && (
                   <View style={estilosMetas.caixaConcluida}>
                     <Text style={{ color: CORES.verde, fontWeight: 'bold', textAlign: 'center' }}>
@@ -386,73 +429,200 @@ export default function Metas() {
         </ScrollView>
       )}
 
-      {/* ── Modal: Nova Meta ── */}
+      {/* ════════════════════════════════════════════════
+          MODAL: Nova Meta
+          ════════════════════════════════════════════════ */}
       <Modal visible={modalNovaMeta} transparent animationType="slide">
         <View style={estilosMetas.overlayModal}>
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={{ width: '100%' }}
           >
-            <View style={estilosMetas.conteudoModal}>
-              <View style={estilosMetas.alcaModal} />
-              <Text style={estilosMetas.tituloModal}>Nova Meta</Text>
-              <Text style={estilosMetas.subtituloModal}>
-                Defina um objetivo e acompanhe seu progresso.
-              </Text>
+            <ScrollView keyboardShouldPersistTaps="handled">
+              <View style={estilosMetas.conteudoModal}>
+                <View style={estilosMetas.alcaModal} />
+                <Text style={estilosMetas.tituloModal}>Nova Meta 🎯</Text>
 
-              <Text style={estilosMetas.labelCampo}>Nome da meta</Text>
-              <TextInput
-                style={estilosMetas.input}
-                placeholder="Ex: Viagem, Notebook, Reserva..."
-                placeholderTextColor="#6b7280"
-                value={nomeMeta}
-                onChangeText={setNomeMeta}
-              />
+                {/* ── Nome ── */}
+                <Text style={estilosMetas.labelCampo}>Nome da meta</Text>
+                <TextInput
+                  style={estilosMetas.input}
+                  placeholder="Ex: Viagem, Notebook, Reserva..."
+                  placeholderTextColor="#6b7280"
+                  value={nomeMeta}
+                  onChangeText={setNomeMeta}
+                />
 
-              <Text style={estilosMetas.labelCampo}>Valor objetivo (R$)</Text>
-              <TextInput
-                style={estilosMetas.input}
-                placeholder="Ex: 5000"
-                placeholderTextColor="#6b7280"
-                keyboardType="numeric"
-                value={valorAlvo}
-                onChangeText={setValorAlvo}
-              />
+                {/* ── Valor objetivo com máscara R$ ── */}
+                <Text style={estilosMetas.labelCampo}>Valor objetivo</Text>
+                <TextInput
+                  style={estilosMetas.input}
+                  placeholder="R$ 0,00"
+                  placeholderTextColor="#6b7280"
+                  keyboardType="numeric"
+                  value={valorAlvo}
+                  onChangeText={(t) => setValorAlvo(formatarValorInput(t))}
+                />
 
-              <Text style={estilosMetas.labelCampo}>Data limite (opcional, formato: AAAA-MM-DD)</Text>
-              <TextInput
-                style={estilosMetas.input}
-                placeholder="Ex: 2026-12-31"
-                placeholderTextColor="#6b7280"
-                value={dataLimite}
-                onChangeText={setDataLimite}
-              />
+                {/* ── Data limite: toggle + seletores ── */}
+                <Text style={estilosMetas.labelCampo}>Data limite</Text>
 
-              <View style={estilosMetas.filhaBotoes}>
-                <TouchableOpacity
-                  style={estilosMetas.botaoCancelar}
-                  onPress={fecharModalNovaMeta}
-                  disabled={salvando}
-                >
-                  <Text style={estilosMetas.textoCancelar}>Cancelar</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[estilosMetas.botaoSalvar, salvando && { opacity: 0.6 }]}
-                  onPress={salvarMeta}
-                  disabled={salvando}
-                >
-                  {salvando
-                    ? <ActivityIndicator color="#fff" />
-                    : <Text style={estilosMetas.textoSalvar}>Salvar Meta</Text>
-                  }
-                </TouchableOpacity>
+                {/* Botão de toggle: Com prazo / Sem prazo */}
+                <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
+                  <TouchableOpacity
+                    style={[
+                      estilosMetas.botaoToggleData,
+                      !usarDataLimite && estilosMetas.botaoToggleDataAtivo,
+                    ]}
+                    onPress={() => setUsarDataLimite(false)}
+                  >
+                    <Text
+                      style={[
+                        estilosMetas.textoToggleData,
+                        !usarDataLimite && { color: '#fff' },
+                      ]}
+                    >
+                      Sem prazo
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      estilosMetas.botaoToggleData,
+                      usarDataLimite && estilosMetas.botaoToggleDataAtivo,
+                    ]}
+                    onPress={() => setUsarDataLimite(true)}
+                  >
+                    <Text
+                      style={[
+                        estilosMetas.textoToggleData,
+                        usarDataLimite && { color: '#fff' },
+                      ]}
+                    >
+                      Com prazo
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Seletores de dia / mês / ano — só aparecem quando "Com prazo" está ativo */}
+                {usarDataLimite && (
+                  <View style={estilosMetas.caixaData}>
+                    <Text style={estilosMetas.labelDataPequeno}>
+                      📅 {String(diaSelecionado).padStart(2, '0')}/{String(mesSelecionado + 1).padStart(2, '0')}/{anoSelecionado}
+                    </Text>
+
+                    {/* Seletor de Mês */}
+                    <Text style={estilosMetas.labelSeletor}>Mês</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+                      {MESES.map((mes, idx) => (
+                        <TouchableOpacity
+                          key={idx}
+                          style={[
+                            estilosMetas.chipData,
+                            mesSelecionado === idx && estilosMetas.chipDataAtivo,
+                          ]}
+                          onPress={() => {
+                            setMesSelecionado(idx);
+                            // Ajusta o dia se for maior que o máximo do novo mês
+                            const max = diasNoMes(idx, anoSelecionado);
+                            if (diaSelecionado > max) setDiaSelecionado(max);
+                          }}
+                        >
+                          <Text
+                            style={[
+                              estilosMetas.textoChipData,
+                              mesSelecionado === idx && { color: '#000', fontWeight: 'bold' },
+                            ]}
+                          >
+                            {mes.slice(0, 3)}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+
+                    {/* Seletor de Dia */}
+                    <Text style={estilosMetas.labelSeletor}>Dia</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+                      {dias.map((d) => (
+                        <TouchableOpacity
+                          key={d}
+                          style={[
+                            estilosMetas.chipDataPequeno,
+                            diaSelecionado === d && estilosMetas.chipDataAtivo,
+                          ]}
+                          onPress={() => setDiaSelecionado(d)}
+                        >
+                          <Text
+                            style={[
+                              estilosMetas.textoChipData,
+                              diaSelecionado === d && { color: '#000', fontWeight: 'bold' },
+                            ]}
+                          >
+                            {String(d).padStart(2, '0')}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+
+                    {/* Seletor de Ano */}
+                    <Text style={estilosMetas.labelSeletor}>Ano</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }}>
+                      {anos.map((a) => (
+                        <TouchableOpacity
+                          key={a}
+                          style={[
+                            estilosMetas.chipData,
+                            anoSelecionado === a && estilosMetas.chipDataAtivo,
+                          ]}
+                          onPress={() => {
+                            setAnoSelecionado(a);
+                            const max = diasNoMes(mesSelecionado, a);
+                            if (diaSelecionado > max) setDiaSelecionado(max);
+                          }}
+                        >
+                          <Text
+                            style={[
+                              estilosMetas.textoChipData,
+                              anoSelecionado === a && { color: '#000', fontWeight: 'bold' },
+                            ]}
+                          >
+                            {a}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
+
+                {/* Botões */}
+                <View style={estilosMetas.filhaBotoes}>
+                  <TouchableOpacity
+                    style={estilosMetas.botaoCancelar}
+                    onPress={fecharModalNovaMeta}
+                    disabled={salvando}
+                  >
+                    <Text style={estilosMetas.textoCancelar}>Cancelar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[estilosMetas.botaoSalvar, salvando && { opacity: 0.6 }]}
+                    onPress={salvarMeta}
+                    disabled={salvando}
+                  >
+                    {salvando ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <Text style={estilosMetas.textoSalvar}>Criar Meta</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
+            </ScrollView>
           </KeyboardAvoidingView>
         </View>
       </Modal>
 
-      {/* ✅ NOVO: Modal de Contribuição */}
+      {/* ════════════════════════════════════════════════
+          MODAL: Contribuição
+          ════════════════════════════════════════════════ */}
       <Modal visible={modalContribuir} transparent animationType="slide">
         <View style={estilosMetas.overlayModal}>
           <KeyboardAvoidingView
@@ -461,21 +631,46 @@ export default function Metas() {
           >
             <View style={estilosMetas.conteudoModal}>
               <View style={estilosMetas.alcaModal} />
-              <Text style={estilosMetas.tituloModal}>Adicionar Contribuição</Text>
-              <Text style={estilosMetas.subtituloModal}>
-                {metaParaContribuir?.nome ?? ''}{'\n'}
-                Acumulado: {formatarMoeda(metaParaContribuir?.valorAtual ?? 0)} de{' '}
-                {formatarMoeda(metaParaContribuir?.valorAlvo ?? 0)}
-              </Text>
+              <Text style={estilosMetas.tituloModal}>Adicionar Valor 💰</Text>
 
-              <Text style={estilosMetas.labelCampo}>Valor a adicionar (R$)</Text>
+              {/* Info da meta */}
+              {metaParaContribuir && (
+                <View style={estilosMetas.caixaInfoMeta}>
+                  <Text style={estilosMetas.nomeInfoMeta}>{metaParaContribuir.nome}</Text>
+                  <View style={estilosMetas.barraFundo}>
+                    <View
+                      style={[
+                        estilosMetas.barraProgresso,
+                        {
+                          width: `${Math.min(
+                            (metaParaContribuir.valorAtual / metaParaContribuir.valorAlvo) * 100,
+                            100
+                          )}%` as any,
+                          backgroundColor: '#FACC15',
+                        },
+                      ]}
+                    />
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
+                    <Text style={{ color: CORES.verde, fontSize: 13, fontWeight: 'bold' }}>
+                      {formatarMoeda(metaParaContribuir.valorAtual)} acumulado
+                    </Text>
+                    <Text style={{ color: CORES.textoEscuro, fontSize: 13 }}>
+                      de {formatarMoeda(metaParaContribuir.valorAlvo)}
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              <Text style={estilosMetas.labelCampo}>Quanto você quer adicionar?</Text>
               <TextInput
                 style={estilosMetas.input}
-                placeholder="Ex: 200"
+                placeholder="R$ 0,00"
                 placeholderTextColor="#6b7280"
                 keyboardType="numeric"
                 value={valorContribuicao}
-                onChangeText={setValorContribuicao}
+                onChangeText={(t) => setValorContribuicao(formatarValorInput(t))}
+                autoFocus
               />
 
               <View style={estilosMetas.filhaBotoes}>
@@ -491,10 +686,11 @@ export default function Metas() {
                   onPress={contribuirParaMeta}
                   disabled={contribuindo}
                 >
-                  {contribuindo
-                    ? <ActivityIndicator color="#000" />
-                    : <Text style={estilosMetas.textoSalvarAmarelo}>Confirmar</Text>
-                  }
+                  {contribuindo ? (
+                    <ActivityIndicator color="#000" />
+                  ) : (
+                    <Text style={estilosMetas.textoSalvarAmarelo}>Confirmar</Text>
+                  )}
                 </TouchableOpacity>
               </View>
             </View>

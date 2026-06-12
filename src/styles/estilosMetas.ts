@@ -1,12 +1,10 @@
 // app/(tabs)/estilosMetas.ts
-// Estilos da tela de Metas — separados do componente.
 
 import { StyleSheet } from 'react-native';
-import { CORES } from '../../src/config';
+import { CORES } from '../config';
 
 export const estilosMetas = StyleSheet.create({
 
-  // Tela principal
   container: {
     flex: 1,
     backgroundColor: CORES.fundo,
@@ -14,7 +12,7 @@ export const estilosMetas = StyleSheet.create({
     paddingTop: 10,
   },
 
-  // Cabeçalho
+  // ── Cabeçalho ──────────────────────────────────────────────
   cabecalho: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -45,7 +43,7 @@ export const estilosMetas = StyleSheet.create({
     alignItems: 'center',
   },
 
-  // Banner de resumo no topo
+  // ── Banner de resumo ───────────────────────────────────────
   bannerResumo: {
     backgroundColor: CORES.cartao,
     borderRadius: 16,
@@ -79,7 +77,7 @@ export const estilosMetas = StyleSheet.create({
     color: CORES.textoClaro,
   },
 
-  // Estado vazio
+  // ── Estado vazio ───────────────────────────────────────────
   caixaVazia: {
     alignItems: 'center',
     marginTop: 60,
@@ -121,7 +119,7 @@ export const estilosMetas = StyleSheet.create({
     fontSize: 15,
   },
 
-  // Cartão de cada meta
+  // ── Cartão de meta ─────────────────────────────────────────
   cartaoMeta: {
     backgroundColor: CORES.cartao,
     padding: 18,
@@ -171,7 +169,7 @@ export const estilosMetas = StyleSheet.create({
     borderColor: '#FACC1540',
   },
 
-  // Valores
+  // ── Valores ────────────────────────────────────────────────
   linhaValores: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -187,7 +185,7 @@ export const estilosMetas = StyleSheet.create({
     fontWeight: 'bold',
   },
 
-  // Barra de progresso
+  // ── Barra de progresso ─────────────────────────────────────
   barraFundo: {
     height: 8,
     backgroundColor: CORES.fundo,
@@ -206,7 +204,7 @@ export const estilosMetas = StyleSheet.create({
     textAlign: 'right',
   },
 
-  // Caixa de meta concluída
+  // ── Caixa meta concluída ───────────────────────────────────
   caixaConcluida: {
     marginTop: 12,
     padding: 10,
@@ -216,7 +214,7 @@ export const estilosMetas = StyleSheet.create({
     borderColor: CORES.verde,
   },
 
-  // Modal
+  // ── Modal base ─────────────────────────────────────────────
   overlayModal: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.6)',
@@ -227,6 +225,7 @@ export const estilosMetas = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
+    paddingBottom: 32,
   },
   alcaModal: {
     width: 40,
@@ -240,15 +239,11 @@ export const estilosMetas = StyleSheet.create({
     color: CORES.textoClaro,
     fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 6,
-    textAlign: 'center',
-  },
-  subtituloModal: {
-    color: CORES.textoEscuro,
-    fontSize: 13,
-    textAlign: 'center',
     marginBottom: 20,
+    textAlign: 'center',
   },
+
+  // ── Campos do formulário ───────────────────────────────────
   labelCampo: {
     color: CORES.textoMedio,
     fontSize: 13,
@@ -260,11 +255,103 @@ export const estilosMetas = StyleSheet.create({
     color: CORES.textoClaro,
     padding: 14,
     borderRadius: 12,
-    marginBottom: 14,
+    marginBottom: 16,
     borderWidth: 1,
     borderColor: CORES.borda,
     fontSize: 16,
   },
+
+  // ── Seletor de data ────────────────────────────────────────
+  botaoToggleData: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    backgroundColor: CORES.fundo,
+    borderWidth: 1,
+    borderColor: CORES.borda,
+  },
+  botaoToggleDataAtivo: {
+    backgroundColor: CORES.azul,
+    borderColor: CORES.azul,
+  },
+  textoToggleData: {
+    color: CORES.textoMedio,
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  caixaData: {
+    backgroundColor: CORES.fundo,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: CORES.borda,
+  },
+  labelDataPequeno: {
+    color: CORES.textoClaro,
+    fontWeight: 'bold',
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 14,
+  },
+  labelSeletor: {
+    color: CORES.textoEscuro,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1,
+    marginBottom: 8,
+  },
+  chipData: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    backgroundColor: CORES.cartao,
+    borderWidth: 1,
+    borderColor: CORES.borda,
+    marginRight: 8,
+    minWidth: 52,
+    alignItems: 'center',
+  },
+  chipDataPequeno: {
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    backgroundColor: CORES.cartao,
+    borderWidth: 1,
+    borderColor: CORES.borda,
+    marginRight: 6,
+    minWidth: 42,
+    alignItems: 'center',
+  },
+  chipDataAtivo: {
+    backgroundColor: '#FACC15',
+    borderColor: '#FACC15',
+  },
+  textoChipData: {
+    color: CORES.textoMedio,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+
+  // ── Caixa de info da meta (modal contribuição) ─────────────
+  caixaInfoMeta: {
+    backgroundColor: CORES.fundo,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: CORES.borda,
+  },
+  nomeInfoMeta: {
+    color: CORES.textoClaro,
+    fontSize: 15,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+
+  // ── Botões ─────────────────────────────────────────────────
   filhaBotoes: {
     flexDirection: 'row',
     gap: 12,

@@ -4,7 +4,7 @@
 package com.Projeto.GestorFin.entities;
 
 import jakarta.persistence.*;
-import com.fasterxml.jackson.annotation.JsonIgnore; // ← ADICIONADO PARA SEGURANÇA
+import com.fasterxml.jackson.annotation.JsonProperty; // ← TROCADO de JsonIgnore para JsonProperty
 import java.io.Serializable;        // ← professora usa sempre
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -24,7 +24,13 @@ public class Usuario implements Serializable {  // ← ADICIONADO
     @Column(nullable = false, unique = true)
     private String email;
 
-    @JsonIgnore // ← ISSO IMPEDE A SENHA DE VAZAR NO FRONTEND E NO POSTMAN
+    // ✅ CORRIGIDO: @JsonIgnore bloqueava a senha nos DOIS sentidos
+    // (entrada E saída), por isso ela chegava NULL ao cadastrar.
+    //
+    // @JsonProperty(WRITE_ONLY) faz o correto:
+    //   - O app PODE enviar a senha ao cadastrar/logar (entrada) ✅
+    //   - A senha NUNCA aparece nas respostas do backend (saída) ✅
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     @Column(nullable = false)
     private String senha;
 
