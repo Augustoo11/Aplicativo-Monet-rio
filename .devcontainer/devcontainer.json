@@ -6,5 +6,23 @@
       "version": "17"
     }
   },
-  "postCreateCommand": "npm install --legacy-peer-deps && node -v && java -version"
+
+  "postCreateCommand": "npm ci --legacy-peer-deps && node -v && java -version",
+
+  "forwardPorts": [8081, 19000, 19001, 19002, 8080],
+
+  "portsAttributes": {
+    "8081": {
+      "label": "Expo Metro Bundler",
+      "onAutoForward": "notify"
+    },
+    "19000": {
+      "label": "Expo (Tunel)",
+      "onAutoForward": "notify"
+    },
+    "8080": {
+      "label": "Backend - GestorFin",
+      "onAutoForward": "notify"
+    }
+  }
 }
