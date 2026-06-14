@@ -34,7 +34,7 @@ public class TransacaoController {
     // JSON esperado (despesa normal):
     // {
     //   "usuario":   { "id": "id-do-usuario" },
-    //   "categoria": { "id": 1 },
+    //   "categoria": { "id": "id-da-categoria" },
     //   "tipo":      "despesa",
     //   "valor":     50.00,
     //   "descricao": "Almoço",
@@ -46,14 +46,17 @@ public class TransacaoController {
     // JSON esperado (despesa de meta):
     // {
     //   "usuario":   { "id": "id-do-usuario" },
-    //   "categoria": { "id": 1 },
+    //   "categoria": { "id": "id-da-categoria" },
     //   "tipo":      "despesa",
     //   "valor":     200.00,
     //   "descricao": "Poupança para viagem",
     //   "data":      "2026-06-01",
     //   "ehMeta":    true,
-    //   "metaId":    3
+    //   "metaId":    "id-da-meta"
     // }
+    //
+    // ✅ "id", "categoria.id" e "metaId" agora são Strings (UUID).
+    // O "id" da transação é gerado automaticamente pelo código Java.
     // -------------------------------------------------------
     @PostMapping("/transacoes")
     public String saveTransacao(@RequestBody Transacao transacao) {
@@ -96,7 +99,7 @@ public class TransacaoController {
         // -------------------------------------------------------
         if (tipo.equals("despesa") && transacao.isEhMeta() && transacao.getMetaId() != null) {
 
-            // Busca a meta pelo ID informado
+            // Busca a meta pelo ID informado (agora String/UUID)
             Optional<Meta> metaOpcional = metaRepository.findById(transacao.getMetaId());
 
             if (metaOpcional.isEmpty()) {
@@ -131,8 +134,9 @@ public class TransacaoController {
     }
 
     // GET /transacoes/{id} → Busca transação por ID
+    // ✅ id agora é String (UUID)
     @GetMapping("/transacoes/{id}")
-    public Optional<Transacao> getTransacaoById(@PathVariable Long id) {
+    public Optional<Transacao> getTransacaoById(@PathVariable String id) {
         return transacaoRepository.findById(id);
     }
 
@@ -155,8 +159,9 @@ public class TransacaoController {
     }
 
     // PUT /transacoes/{id} → Atualiza uma transação
+    // ✅ id agora é String (UUID)
     @PutMapping("/transacoes/{id}")
-    public String updateTransacao(@PathVariable Long id, @RequestBody Transacao transacao) {
+    public String updateTransacao(@PathVariable String id, @RequestBody Transacao transacao) {
         return transacaoRepository.findById(id).map(existente -> {
             existente.setTipo(transacao.getTipo());
             existente.setValor(transacao.getValor());
@@ -173,8 +178,9 @@ public class TransacaoController {
     }
 
     // DELETE /transacoes/{id} → Remove uma transação
+    // ✅ id agora é String (UUID)
     @DeleteMapping("/transacoes/{id}")
-    public String deleteTransacao(@PathVariable Long id) {
+    public String deleteTransacao(@PathVariable String id) {
         if (transacaoRepository.existsById(id)) {
             transacaoRepository.deleteById(id);
             return "Transação deletada com sucesso!";

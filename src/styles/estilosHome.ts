@@ -161,6 +161,14 @@ export const estilosHome = StyleSheet.create({
   botaoCategoriaAtivo: { backgroundColor: CORES.azul, borderColor: CORES.azul },
   textoCategoria: { color: CORES.textoMedio, fontSize: 13 },
   textoCategoriaAtivo: { color: '#FFF', fontWeight: 'bold' },
+
+  // ✅ NOVO: texto explicativo abaixo do label "De onde vem o dinheiro?"
+  subtextoCategoria: {
+    color: CORES.textoEscuro,
+    fontSize: 11,
+    marginBottom: 10,
+    marginTop: -4,
+  },
   input: { backgroundColor: CORES.fundo, color: CORES.textoClaro, padding: 14, borderRadius: 12, marginBottom: 14, borderWidth: 1, borderColor: CORES.borda, fontSize: 16 },
   filhaBotoes: { flexDirection: 'row', gap: 12, marginTop: 8 },
   botaoCancelar: { flex: 1, padding: 15, borderRadius: 12, backgroundColor: CORES.fundo, alignItems: 'center', borderWidth: 1, borderColor: CORES.borda },

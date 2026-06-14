@@ -18,7 +18,6 @@ import {
   Image,
   ScrollView,
   StatusBar,
-  StyleSheet,
   ActivityIndicator,
 } from 'react-native';
 
@@ -150,11 +149,11 @@ export default function TelaCadastro() {
           style={{ flex: 1, width: '100%' }}
         >
           <ScrollView
-            contentContainerStyle={styles.scroll}
+            contentContainerStyle={estilosLogin.scrollCadastro}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            <View style={[estilosLogin.cartaoLogin, styles.cartaoAjustado]}>
+            <View style={[estilosLogin.cartaoLogin, estilosLogin.cartaoAjustado]}>
 
               {/* Logo */}
               <View style={estilosLogin.iconeTopo}>
@@ -241,7 +240,7 @@ export default function TelaCadastro() {
               </TouchableOpacity>
 
               {/* Link para voltar ao login */}
-              <TouchableOpacity style={styles.linkEntrar} onPress={() => router.back()}>
+              <TouchableOpacity style={estilosLogin.linkEntrar} onPress={() => router.back()}>
                 <Text style={{ color: '#9ca3af', fontSize: 14 }}>Já tem conta? </Text>
                 <Text style={estilosGlobais.textoLink}>Entrar</Text>
               </TouchableOpacity>
@@ -253,30 +252,3 @@ export default function TelaCadastro() {
     </ImageBackground>
   );
 }
-
-const styles = StyleSheet.create({
-  // ScrollView centraliza o conteúdo verticalmente
-  scroll: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingTop: 60,
-    paddingBottom: 40,
-    paddingHorizontal: 24,
-  },
-
-  // Ajuste extra no cartão para tela de cadastro
-  cartaoAjustado: {
-    width: '100%',
-    maxWidth: 360,
-    alignItems: 'center',
-  },
-
-  // Link "Já tem conta? Entrar"
-  linkEntrar: {
-    flexDirection: 'row',
-    marginTop: 20,
-    marginBottom: 10,
-    justifyContent: 'center',
-  },
-});

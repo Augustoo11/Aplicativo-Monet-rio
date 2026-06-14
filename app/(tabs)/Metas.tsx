@@ -21,8 +21,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL, CORES } from '../../src/config';
 import { estilosMetas } from '../../src/styles/estilosMetas';
 
+// ✅ PADRONIZADO: id agora é String (UUID), igual ao Usuario
 type Meta = {
-  id: number;
+  id: string;
   nome: string;
   valorAlvo: number;
   valorAtual: number;
@@ -43,6 +44,11 @@ export default function Metas() {
   const [usuarioId, setUsuarioId] = useState<string | null>(null);
   const [metas, setMetas] = useState<Meta[]>([]);
   const [carregando, setCarregando] = useState(true);
+
+  // ✅ NOVO: saldo disponível do usuário (receitas - despesas)
+  // Usado para impedir que o usuário contribua com mais dinheiro
+  // do que ele realmente tem disponível.
+  const [saldoDisponivel, setSaldoDisponivel] = useState(0);
 
   // ── Modal: Nova meta ──────────────────────────────────────
   const [modalNovaMeta, setModalNovaMeta] = useState(false);
@@ -69,7 +75,34 @@ export default function Metas() {
   async function carregarTudo() {
     const id = await AsyncStorage.getItem('@usuario_id');
     setUsuarioId(id);
-    if (id) await buscarMetas(id);
+    if (id) {
+      await buscarMetas(id);
+      await buscarSaldoDisponivel(id);
+    }
+  }
+
+  // ✅ NOVO: busca todas as transações do usuário e calcula o saldo
+  // disponível (receitas - despesas), igual ao cálculo da Home.
+  async function buscarSaldoDisponivel(idDoUsuario: string) {
+    try {
+      const resposta = await fetch(`${API_URL}/transacoes/usuario/${idDoUsuario}`);
+      if (!resposta.ok) return;
+
+      const transacoes = await resposta.json();
+
+      const totalReceitas = transacoes
+        .filter((t: any) => t.tipo === 'receita')
+        .reduce((acc: number, t: any) => acc + t.valor, 0);
+
+      const totalDespesas = transacoes
+        .filter((t: any) => t.tipo === 'despesa')
+        .reduce((acc: number, t: any) => acc + t.valor, 0);
+
+      setSaldoDisponivel(totalReceitas - totalDespesas);
+    } catch {
+      // Se falhar, mantém o saldo em 0 — o usuário só não conseguirá
+      // contribuir até recarregar a tela com a conexão funcionando.
+    }
   }
 
   async function buscarMetas(idDoUsuario: string) {
@@ -169,6 +202,17 @@ export default function Metas() {
       return;
     }
 
+    // ✅ NOVO: não permite contribuir com mais do que o saldo disponível.
+    // Ex: se o saldo é R$ 200 e o usuário tenta adicionar R$ 300, bloqueia.
+    if (valor > saldoDisponivel) {
+      Alert.alert(
+        'Saldo insuficiente',
+        `Você tem ${formatarMoeda(saldoDisponivel)} disponível, ` +
+        `mas está tentando adicionar ${formatarMoeda(valor)}.`
+      );
+      return;
+    }
+
     setContribuindo(true);
     try {
       const novoValorAtual = metaParaContribuir.valorAtual + valor;
@@ -194,7 +238,11 @@ export default function Metas() {
             : 'Contribuição adicionada!';
         Alert.alert('Sucesso!', msg);
         fecharModalContribuir();
-        if (usuarioId) await buscarMetas(usuarioId);
+        if (usuarioId) {
+          await buscarMetas(usuarioId);
+          // ✅ Atualiza o saldo na tela (diminui pelo valor contribuído)
+          setSaldoDisponivel((atual) => atual - valor);
+        }
       } else {
         Alert.alert('Erro', 'Não foi possível registrar a contribuição.');
       }
@@ -206,7 +254,7 @@ export default function Metas() {
   }
 
   // ── Exclui meta ────────────────────────────────────────────
-  async function excluirMeta(id: number) {
+  async function excluirMeta(id: string) {
     Alert.alert('Excluir meta', 'Tem certeza que quer excluir esta meta?', [
       { text: 'Cancelar', style: 'cancel' },
       {
@@ -663,6 +711,15 @@ export default function Metas() {
               )}
 
               <Text style={estilosMetas.labelCampo}>Quanto você quer adicionar?</Text>
+
+              {/* ✅ NOVO: mostra o saldo disponível para o usuário */}
+              <Text style={[estilosMetas.labelCampo, { marginTop: -6, marginBottom: 12 }]}>
+                Saldo disponível:{' '}
+                <Text style={{ color: saldoDisponivel > 0 ? CORES.verde : CORES.vermelho, fontWeight: 'bold' }}>
+                  {formatarMoeda(saldoDisponivel)}
+                </Text>
+              </Text>
+
               <TextInput
                 style={estilosMetas.input}
                 placeholder="R$ 0,00"

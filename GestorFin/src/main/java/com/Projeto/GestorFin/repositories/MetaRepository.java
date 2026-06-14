@@ -5,12 +5,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import java.util.List;
 
-// JpaRepository<Meta, Long>:
-//   - Gerencia a tabela "metas"
-//   - O ID é do tipo Long (número AUTO_INCREMENT)
-// O Spring cria automaticamente: save(), findAll(), findById(), deleteById(), etc.
+// ✅ PADRONIZADO: JpaRepository<Meta, String>
+//   - O ID agora é do tipo String (UUID gerado pelo código)
 @Repository
-public interface MetaRepository extends JpaRepository<Meta, Long> {
+public interface MetaRepository extends JpaRepository<Meta, String> {
 
     // Busca todas as metas de um usuário específico
     // SELECT * FROM metas WHERE usuario_id = ?

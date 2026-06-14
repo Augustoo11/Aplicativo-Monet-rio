@@ -57,4 +57,31 @@ export const estilosLogin = StyleSheet.create({
   botaoEsqueciSenha: {
     marginTop: 12,
   },
+
+  // ✅ MOVIDO de app/cadastro.tsx — estilos específicos da tela de cadastro
+
+  // ScrollView centraliza o conteúdo verticalmente
+  scrollCadastro: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 60,
+    paddingBottom: 40,
+    paddingHorizontal: 24,
+  },
+
+  // Ajuste extra no cartão para tela de cadastro
+  cartaoAjustado: {
+    width: '100%',
+    maxWidth: 360,
+    alignItems: 'center',
+  },
+
+  // Link "Já tem conta? Entrar"
+  linkEntrar: {
+    flexDirection: 'row',
+    marginTop: 20,
+    marginBottom: 10,
+    justifyContent: 'center',
+  },
 });

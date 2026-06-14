@@ -30,6 +30,9 @@ public class MetaController {
     //   "dataLimite": "2026-12-31",   ← opcional
     //   "status":     "em_andamento"
     // }
+    //
+    // ✅ O "id" da meta NÃO é enviado pelo frontend — ele é gerado
+    // automaticamente pelo código Java (UUID) ao salvar.
     // -------------------------------------------------------
     @PostMapping("/metas")
     public String saveMeta(@RequestBody Meta meta) {
@@ -72,9 +75,10 @@ public class MetaController {
 
     // -------------------------------------------------------
     // GET /metas/{id} → Busca uma meta pelo ID
+    // ✅ id agora é String (UUID)
     // -------------------------------------------------------
     @GetMapping("/metas/{id}")
-    public Optional<Meta> getMetaById(@PathVariable Long id) {
+    public Optional<Meta> getMetaById(@PathVariable String id) {
         return metaRepository.findById(id);
     }
 
@@ -104,9 +108,10 @@ public class MetaController {
 
     // -------------------------------------------------------
     // PUT /metas/{id} → Atualiza uma meta existente
+    // ✅ id agora é String (UUID)
     // -------------------------------------------------------
     @PutMapping("/metas/{id}")
-    public String updateMeta(@PathVariable Long id, @RequestBody Meta meta) {
+    public String updateMeta(@PathVariable String id, @RequestBody Meta meta) {
         return metaRepository.findById(id).map(existente -> {
             existente.setNome(meta.getNome());
             existente.setValorAlvo(meta.getValorAlvo());
@@ -120,9 +125,10 @@ public class MetaController {
 
     // -------------------------------------------------------
     // DELETE /metas/{id} → Remove uma meta
+    // ✅ id agora é String (UUID)
     // -------------------------------------------------------
     @DeleteMapping("/metas/{id}")
-    public String deleteMeta(@PathVariable Long id) {
+    public String deleteMeta(@PathVariable String id) {
         if (metaRepository.existsById(id)) {
             metaRepository.deleteById(id);
             return "Meta deletada com sucesso!";

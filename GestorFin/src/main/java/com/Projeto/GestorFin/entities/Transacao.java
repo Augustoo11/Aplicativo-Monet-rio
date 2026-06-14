@@ -5,15 +5,17 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "transacoes")
 public class Transacao implements Serializable {
     private static final long serialVersionUID = 1L;
 
+    // ✅ PADRONIZADO: id agora é String/UUID, igual ao Usuario.
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(name = "id", columnDefinition = "VARCHAR(36)", updatable = false, nullable = false)
+    private String id;
 
     @ManyToOne
     @JoinColumn(name = "usuario_id", nullable = false)
@@ -41,9 +43,11 @@ public class Transacao implements Serializable {
     @Column(name = "eh_meta", nullable = false)
     private boolean ehMeta = false;
 
-    // ID da meta vinculada — só preenchido quando ehMeta = true
-    @Column(name = "meta_id")
-    private Long metaId;
+    // ✅ PADRONIZADO: ID da meta vinculada agora é String/UUID
+    // (porque o id de Meta também passou a ser String/UUID).
+    // Só preenchido quando ehMeta = true.
+    @Column(name = "meta_id", columnDefinition = "VARCHAR(36)")
+    private String metaId;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -53,6 +57,8 @@ public class Transacao implements Serializable {
 
     @PrePersist
     protected void onCreate() {
+        // ✅ NOVO: gera o id (UUID de 36 caracteres), igual ao Usuario
+        this.id        = UUID.randomUUID().toString();
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }
@@ -64,8 +70,8 @@ public class Transacao implements Serializable {
 
     public Transacao() {}
 
-    public Long getId()                          { return id; }
-    public void setId(Long id)                   { this.id = id; }
+    public String getId()                        { return id; }
+    public void setId(String id)                 { this.id = id; }
 
     public Usuario getUsuario()                  { return usuario; }
     public void setUsuario(Usuario usuario)      { this.usuario = usuario; }
@@ -88,8 +94,8 @@ public class Transacao implements Serializable {
     public boolean isEhMeta()                    { return ehMeta; }
     public void setEhMeta(boolean ehMeta)        { this.ehMeta = ehMeta; }
 
-    public Long getMetaId()                      { return metaId; }
-    public void setMetaId(Long metaId)           { this.metaId = metaId; }
+    public String getMetaId()                    { return metaId; }
+    public void setMetaId(String metaId)         { this.metaId = metaId; }
 
     public LocalDateTime getCreatedAt()          { return createdAt; }
     public void setCreatedAt(LocalDateTime v)    { this.createdAt = v; }

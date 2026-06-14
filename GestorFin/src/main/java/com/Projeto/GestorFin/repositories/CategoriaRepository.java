@@ -10,7 +10,10 @@ import org.springframework.stereotype.Repository;
 // Quando o banco adicionar a coluna, restaurar:
 //   List<Categoria> findByUsuarioId(String usuarioId);
 // -------------------------------------------------------
+//
+// ✅ PADRONIZADO: JpaRepository<Categoria, String>
+//   - O ID agora é do tipo String (UUID gerado pelo código)
 @Repository
-public interface CategoriaRepository extends JpaRepository<Categoria, Long> {
+public interface CategoriaRepository extends JpaRepository<Categoria, String> {
 
 }

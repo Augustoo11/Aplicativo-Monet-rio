@@ -24,6 +24,7 @@ public class CategoriaController {
     CategoriaRepository categoriaRepository;
 
     // POST /categorias → Cria uma categoria
+    // ✅ "id" não é enviado pelo frontend — gerado automaticamente (UUID)
     @PostMapping("/categorias")
     public String saveCategoria(@RequestBody Categoria categoria) {
 
@@ -44,14 +45,16 @@ public class CategoriaController {
     }
 
     // GET /categorias/{id} → Busca categoria por ID
+    // ✅ id agora é String (UUID)
     @GetMapping("/categorias/{id}")
-    public Optional<Categoria> getCategoriaById(@PathVariable Long id) {
+    public Optional<Categoria> getCategoriaById(@PathVariable String id) {
         return categoriaRepository.findById(id);
     }
 
     // PUT /categorias/{id} → Atualiza uma categoria
+    // ✅ id agora é String (UUID)
     @PutMapping("/categorias/{id}")
-    public String updateCategoria(@PathVariable Long id, @RequestBody Categoria categoria) {
+    public String updateCategoria(@PathVariable String id, @RequestBody Categoria categoria) {
         return categoriaRepository.findById(id).map(existente -> {
             existente.setNome(categoria.getNome());
             existente.setTipo(categoria.getTipo());
@@ -63,8 +66,9 @@ public class CategoriaController {
     }
 
     // DELETE /categorias/{id} → Remove uma categoria
+    // ✅ id agora é String (UUID)
     @DeleteMapping("/categorias/{id}")
-    public String deleteCategoria(@PathVariable Long id) {
+    public String deleteCategoria(@PathVariable String id) {
         if (categoriaRepository.existsById(id)) {
             categoriaRepository.deleteById(id);
             return "Categoria deletada com sucesso!";

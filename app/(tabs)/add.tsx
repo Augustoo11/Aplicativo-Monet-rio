@@ -26,16 +26,18 @@ import { API_URL, CORES } from '../../src/config';
 
 // ─── Tipos ────────────────────────────────────────────────────
 
+// ✅ PADRONIZADO: ids agora são String (UUID), igual ao Usuario
+
 // Como o banco retorna uma categoria
 type Categoria = {
-  id: number;
+  id: string;
   nome: string;
   tipo: string;
 };
 
 // Como o banco retorna uma transação
 type Transacao = {
-  id: number;
+  id: string;
   tipo: string;
   valor: number;
   descricao: string;

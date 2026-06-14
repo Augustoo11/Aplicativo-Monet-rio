@@ -25,8 +25,9 @@ import PerfilModal from '../../src/componentes/PerfilModal';
 import { API_URL, CORES } from '../../src/config';
 import { estilosHome } from '../../src/styles/estilosHome';
 
-type Categoria = { id: number; nome: string; tipo: string };
-type MetaSimples = { id: number; nome: string; valorAtual: number; valorAlvo: number };
+// ✅ PADRONIZADO: ids agora são String (UUID), igual ao Usuario
+type Categoria = { id: string; nome: string; tipo: string };
+type MetaSimples = { id: string; nome: string; valorAtual: number; valorAlvo: number };
 
 export default function Home() {
   const { totalReceitas, totalDespesas, saldo, transacoes, setTransacoesDoBanco } =

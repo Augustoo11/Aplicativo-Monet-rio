@@ -5,6 +5,7 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 // @Entity → esta classe representa a tabela "metas" no banco
 @Entity
@@ -12,13 +13,14 @@ import java.time.LocalDateTime;
 public class Meta implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    // ID gerado automaticamente pelo banco (AUTO_INCREMENT)
+    // ✅ PADRONIZADO: id agora é String/UUID, igual ao Usuario.
+    // O próprio código Java gera o id antes de salvar (@PrePersist),
+    // em vez de depender do banco gerar um número (AUTO_INCREMENT).
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(name = "id", columnDefinition = "VARCHAR(36)", updatable = false, nullable = false)
+    private String id;
 
     // Relacionamento: muitas metas pertencem a UM usuário
-    // Se o usuário for deletado, a meta é deletada também (CASCADE)
     @ManyToOne
     @JoinColumn(name = "usuario_id", nullable = false)
     private Usuario usuario;
@@ -52,30 +54,28 @@ public class Meta implements Serializable {
     // Executado automaticamente ANTES de salvar pela 1ª vez
     @PrePersist
     protected void onCreate() {
+        // ✅ NOVO: gera o id (UUID de 36 caracteres), igual ao Usuario
+        this.id         = UUID.randomUUID().toString();
         this.createdAt  = LocalDateTime.now();
         this.updatedAt  = LocalDateTime.now();
-        // Garante que valor_atual nunca seja null ao criar
         if (this.valorAtual == null) {
             this.valorAtual = BigDecimal.ZERO;
         }
-        // Garante que status nunca seja null ao criar
         if (this.status == null) {
             this.status = "em_andamento";
         }
     }
 
-    // Executado automaticamente ANTES de qualquer atualização
     @PreUpdate
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
 
-    // Construtor vazio — obrigatório para o Spring funcionar!
     public Meta() {}
 
     // Getters e Setters
-    public Long getId()                         { return id; }
-    public void setId(Long id)                  { this.id = id; }
+    public String getId()                       { return id; }
+    public void setId(String id)                { this.id = id; }
 
     public Usuario getUsuario()                 { return usuario; }
     public void setUsuario(Usuario usuario)     { this.usuario = usuario; }

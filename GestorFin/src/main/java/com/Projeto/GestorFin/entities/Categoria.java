@@ -3,15 +3,17 @@ package com.Projeto.GestorFin.entities;
 import jakarta.persistence.*;
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "categorias")
 public class Categoria implements Serializable {
     private static final long serialVersionUID = 1L;
 
+    // ✅ PADRONIZADO: id agora é String/UUID, igual ao Usuario.
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(name = "id", columnDefinition = "VARCHAR(36)", updatable = false, nullable = false)
+    private String id;
 
     // -------------------------------------------------------
     // CAMPO TEMPORARIAMENTE REMOVIDO — aguardando banco adicionar coluna usuario_id
@@ -41,13 +43,15 @@ public class Categoria implements Serializable {
 
     @PrePersist
     protected void onCreate() {
+        // ✅ NOVO: gera o id (UUID de 36 caracteres), igual ao Usuario
+        this.id        = UUID.randomUUID().toString();
         this.createdAt = LocalDateTime.now();
     }
 
     public Categoria() {}
 
-    public Long getId()                         { return id; }
-    public void setId(Long id)                  { this.id = id; }
+    public String getId()                       { return id; }
+    public void setId(String id)                { this.id = id; }
 
     public String getNome()                     { return nome; }
     public void setNome(String nome)            { this.nome = nome; }

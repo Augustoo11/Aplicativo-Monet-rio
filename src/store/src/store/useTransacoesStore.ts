@@ -26,7 +26,7 @@ type Transacao = {
   descricao: string;
   data: Date;
   ehMeta: boolean;        // true = despesa de meta (amarela), false = normal (vermelha)
-  metaId: number | null;  // ID da meta vinculada (só quando ehMeta = true)
+  metaId: string | null;  // ✅ ID da meta vinculada agora é String/UUID (só quando ehMeta = true)
 };
 
 // Tipo para agrupar despesas por categoria
