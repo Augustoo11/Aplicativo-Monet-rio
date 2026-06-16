@@ -1,18 +1,16 @@
 // src/styles/estilosLogin.ts
-// Estilos específicos das telas de Login e Cadastro.
+// Estilos das telas de Login e Cadastro.
 
 import { StyleSheet } from 'react-native';
 
 export const estilosLogin = StyleSheet.create({
 
-  // Imagem de fundo que cobre a tela inteira
   imagemFundo: {
     flex: 1,
     width: '100%',
     height: '100%',
   },
 
-  // Camada escura semitransparente sobre a imagem de fundo
   peliculaEscura: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.55)',
@@ -20,7 +18,6 @@ export const estilosLogin = StyleSheet.create({
     alignItems: 'center',
   },
 
-  // Área principal que centraliza o conteúdo
   areaPrincipal: {
     flex: 1,
     width: '100%',
@@ -29,7 +26,6 @@ export const estilosLogin = StyleSheet.create({
     paddingHorizontal: 24,
   },
 
-  // Cartão que contém os campos de login
   cartaoLogin: {
     width: '100%',
     maxWidth: 360,
@@ -41,26 +37,20 @@ export const estilosLogin = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.08)',
   },
 
-  // ✅ CORRIGIDO: área do logo no topo — tamanho restaurado
   iconeTopo: {
     marginBottom: 12,
     alignItems: 'center',
   },
 
-  // ✅ CORRIGIDO: tamanho da logo restaurado para o original
   logo: {
-    width: 160,
-    height: 160,
+    width: 180,
+    height: 180,
   },
 
-  // Botão de "Esqueceu a senha?"
   botaoEsqueciSenha: {
     marginTop: 12,
   },
 
-  // ✅ MOVIDO de app/cadastro.tsx — estilos específicos da tela de cadastro
-
-  // ScrollView centraliza o conteúdo verticalmente
   scrollCadastro: {
     flexGrow: 1,
     justifyContent: 'center',
@@ -70,14 +60,12 @@ export const estilosLogin = StyleSheet.create({
     paddingHorizontal: 24,
   },
 
-  // Ajuste extra no cartão para tela de cadastro
   cartaoAjustado: {
     width: '100%',
     maxWidth: 360,
     alignItems: 'center',
   },
 
-  // Link "Já tem conta? Entrar"
   linkEntrar: {
     flexDirection: 'row',
     marginTop: 20,
