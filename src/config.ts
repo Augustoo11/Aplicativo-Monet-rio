@@ -1,15 +1,6 @@
-// src/config.ts
-// ─────────────────────────────────────────────────────────────
-// Aqui ficam as configurações globais do app.
-// Troque a URL abaixo pela URL do seu Codespace (porta 8080).
-// ─────────────────────────────────────────────────────────────
-
-// URL do backend Spring Boot
-// ⚠️ Não coloque barra "/" no final!
 export const API_URL = 'https://opulent-memory-6vrppg6j767f4q56-8080.app.github.dev';
 
 // Lista de categorias de DESPESA que aparecem no app
-// Esses nomes precisam existir no banco de dados!
 export const CATEGORIAS_DESPESA = [
   'Alimentação',
   'Transporte',
@@ -21,7 +12,6 @@ export const CATEGORIAS_DESPESA = [
 ];
 
 // Lista de categorias de RECEITA que aparecem no app
-// Esses nomes precisam existir no banco de dados!
 export const CATEGORIAS_RECEITA = [
   'Salário',
   'Freelance',

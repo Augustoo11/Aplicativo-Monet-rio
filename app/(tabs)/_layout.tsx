@@ -1,9 +1,3 @@
-// app/(tabs)/_layout.tsx
-// ─────────────────────────────────────────────────────────────
-// Layout das abas — define as telas disponíveis no app.
-// ✅ NOVO: adicionadas as telas Configuracoes e Metas.
-// ─────────────────────────────────────────────────────────────
-
 import { Stack } from 'expo-router';
 
 export default function LayoutTabs() {

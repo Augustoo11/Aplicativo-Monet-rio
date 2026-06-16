@@ -1,9 +1,3 @@
-// src/styles/estilosPerfilModal.ts
-// ─────────────────────────────────────────────────────────────
-// Estilos do componente src/componentes/PerfilModal.tsx
-// Separado do componente para deixar o código mais organizado.
-// ─────────────────────────────────────────────────────────────
-
 import { StyleSheet } from 'react-native';
 import { CORES } from '../config';
 

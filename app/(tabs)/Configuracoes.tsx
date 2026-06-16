@@ -1,6 +1,3 @@
-// app/(tabs)/Configuracoes.tsx
-// Tela de Configurações com funcionalidades reais
-
 import React, { useEffect, useState } from 'react';
 import {
   View,

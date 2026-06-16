@@ -1,9 +1,3 @@
-// src/styles/estilosAdd.ts
-// ─────────────────────────────────────────────────────────────
-// Estilos da tela app/(tabs)/add.tsx
-// Separado do componente para deixar o código mais organizado.
-// ─────────────────────────────────────────────────────────────
-
 import { StyleSheet } from 'react-native';
 import { CORES } from '../config';
 

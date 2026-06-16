@@ -1,6 +1,3 @@
-// src/styles/estilosLogin.ts
-// Estilos das telas de Login e Cadastro.
-
 import { StyleSheet } from 'react-native';
 
 export const estilosLogin = StyleSheet.create({

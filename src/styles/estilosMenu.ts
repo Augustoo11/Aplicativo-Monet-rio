@@ -1,9 +1,3 @@
-// src/styles/estilosMenu.ts
-// ─────────────────────────────────────────────────────────────
-// Estilos da tela app/(tabs)/Menu.tsx (Relatórios)
-// Separado do componente para deixar o código mais organizado.
-// ─────────────────────────────────────────────────────────────
-
 import { StyleSheet } from 'react-native';
 
 export const estilosMenu = StyleSheet.create({

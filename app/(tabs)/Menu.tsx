@@ -1,9 +1,3 @@
-// app/(tabs)/Menu.tsx
-// ─────────────────────────────────────────────────────────────
-// Tela de Relatórios — mostra um resumo financeiro com
-// gráfico simples de barras e gastos por categoria.
-// ─────────────────────────────────────────────────────────────
-
 import React from 'react';
 import {
   View,

@@ -10,10 +10,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
-// JpaRepository<Usuario, String> significa:
-//   - Gerencia a tabela "usuarios"
-//   - O ID é do tipo String (UUID gerado automaticamente no @PrePersist)
-// O Spring cria automaticamente: save(), findAll(), findById(), deleteById(), etc.
 @Repository
 public interface UsuarioRepository extends JpaRepository<Usuario, String> {
 

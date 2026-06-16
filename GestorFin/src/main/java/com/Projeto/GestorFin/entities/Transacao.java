@@ -12,7 +12,6 @@ import java.util.UUID;
 public class Transacao implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    // ✅ PADRONIZADO: id agora é String/UUID, igual ao Usuario.
     @Id
     @Column(name = "id", columnDefinition = "VARCHAR(36)", updatable = false, nullable = false)
     private String id;
@@ -25,7 +24,6 @@ public class Transacao implements Serializable {
     @JoinColumn(name = "categoria_id", nullable = false)
     private Categoria categoria;
 
-    // tipo: "receita" ou "despesa"
     @Column(nullable = false)
     private String tipo;
 
@@ -37,15 +35,9 @@ public class Transacao implements Serializable {
     @Column(nullable = false)
     private LocalDate data;
 
-    // ehMeta = true  → despesa de meta   (aparece em AMARELO no app)
-    // ehMeta = false → despesa normal    (aparece em VERMELHO no app)
-    // Para receitas, este campo é sempre false (não tem efeito)
     @Column(name = "eh_meta", nullable = false)
     private boolean ehMeta = false;
 
-    // ✅ PADRONIZADO: ID da meta vinculada agora é String/UUID
-    // (porque o id de Meta também passou a ser String/UUID).
-    // Só preenchido quando ehMeta = true.
     @Column(name = "meta_id", columnDefinition = "VARCHAR(36)")
     private String metaId;
 
@@ -57,7 +49,6 @@ public class Transacao implements Serializable {
 
     @PrePersist
     protected void onCreate() {
-        // ✅ NOVO: gera o id (UUID de 36 caracteres), igual ao Usuario
         this.id        = UUID.randomUUID().toString();
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();

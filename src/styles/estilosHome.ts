@@ -1,5 +1,3 @@
-// src/styles/estilosHome.ts
-
 import { StyleSheet } from 'react-native';
 import { CORES } from '../config';
 

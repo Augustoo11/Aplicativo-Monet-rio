@@ -1,9 +1,3 @@
-// app/_layout.tsx
-// ─────────────────────────────────────────────────────────────
-// Layout raiz do app — define as rotas principais.
-// Todas as telas do app passam por aqui.
-// ─────────────────────────────────────────────────────────────
-
 import { Stack } from 'expo-router';
 
 export default function RootLayout() {

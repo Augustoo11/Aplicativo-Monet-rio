@@ -1,9 +1,3 @@
-// app/(tabs)/add.tsx
-// ─────────────────────────────────────────────────────────────
-// Tela de adicionar transações com lista completa de histórico.
-// Permite adicionar receitas/despesas e ver o histórico do banco.
-// ─────────────────────────────────────────────────────────────
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -24,11 +18,6 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { API_URL, CORES } from '../../src/config';
 
-// ─── Tipos ────────────────────────────────────────────────────
-
-// ✅ PADRONIZADO: ids agora são String (UUID), igual ao Usuario
-
-// Como o banco retorna uma categoria
 type Categoria = {
   id: string;
   nome: string;

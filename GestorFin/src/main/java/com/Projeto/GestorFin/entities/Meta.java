@@ -7,41 +7,35 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-// @Entity → esta classe representa a tabela "metas" no banco
+
 @Entity
 @Table(name = "metas")
 public class Meta implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    // ✅ PADRONIZADO: id agora é String/UUID, igual ao Usuario.
-    // O próprio código Java gera o id antes de salvar (@PrePersist),
-    // em vez de depender do banco gerar um número (AUTO_INCREMENT).
+    
     @Id
     @Column(name = "id", columnDefinition = "VARCHAR(36)", updatable = false, nullable = false)
     private String id;
 
-    // Relacionamento: muitas metas pertencem a UM usuário
     @ManyToOne
     @JoinColumn(name = "usuario_id", nullable = false)
     private Usuario usuario;
 
-    // Nome da meta. Ex: "Reserva de emergência", "Viagem para Europa"
     @Column(nullable = false)
     private String nome;
 
-    // Valor que o usuário quer atingir. Ex: 10000.00
     @Column(name = "valor_alvo", nullable = false, precision = 12, scale = 2)
     private BigDecimal valorAlvo;
 
-    // Valor que o usuário já acumulou. Começa em 0.
+    
     @Column(name = "valor_atual", nullable = false, precision = 12, scale = 2)
     private BigDecimal valorAtual = BigDecimal.ZERO;
 
-    // Data limite para concluir a meta (opcional — pode ser nula)
     @Column(name = "data_limite")
     private LocalDate dataLimite;
 
-    // Status da meta: "em_andamento", "concluida" ou "cancelada"
+    
     @Column(nullable = false)
     private String status = "em_andamento";
 
@@ -51,10 +45,8 @@ public class Meta implements Serializable {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    // Executado automaticamente ANTES de salvar pela 1ª vez
     @PrePersist
     protected void onCreate() {
-        // ✅ NOVO: gera o id (UUID de 36 caracteres), igual ao Usuario
         this.id         = UUID.randomUUID().toString();
         this.createdAt  = LocalDateTime.now();
         this.updatedAt  = LocalDateTime.now();
@@ -73,7 +65,6 @@ public class Meta implements Serializable {
 
     public Meta() {}
 
-    // Getters e Setters
     public String getId()                       { return id; }
     public void setId(String id)                { this.id = id; }
 

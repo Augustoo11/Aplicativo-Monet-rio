@@ -10,22 +10,11 @@ import java.util.UUID;
 public class Categoria implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    // ✅ PADRONIZADO: id agora é String/UUID, igual ao Usuario.
+   
     @Id
     @Column(name = "id", columnDefinition = "VARCHAR(36)", updatable = false, nullable = false)
     private String id;
 
-    // -------------------------------------------------------
-    // CAMPO TEMPORARIAMENTE REMOVIDO — aguardando banco adicionar coluna usuario_id
-    // Quando o banco adicionar a coluna, descomentar o bloco abaixo:
-    //
-    // @ManyToOne
-    // @JoinColumn(name = "usuario_id", nullable = false)
-    // private Usuario usuario;
-    //
-    // public Usuario getUsuario()             { return usuario; }
-    // public void setUsuario(Usuario usuario) { this.usuario = usuario; }
-    // -------------------------------------------------------
 
     @Column(nullable = false)
     private String nome;
@@ -43,7 +32,7 @@ public class Categoria implements Serializable {
 
     @PrePersist
     protected void onCreate() {
-        // ✅ NOVO: gera o id (UUID de 36 caracteres), igual ao Usuario
+        
         this.id        = UUID.randomUUID().toString();
         this.createdAt = LocalDateTime.now();
     }

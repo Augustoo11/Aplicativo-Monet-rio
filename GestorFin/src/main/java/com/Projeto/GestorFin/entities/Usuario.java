@@ -4,15 +4,15 @@
 package com.Projeto.GestorFin.entities;
 
 import jakarta.persistence.*;
-import com.fasterxml.jackson.annotation.JsonProperty; // ← TROCADO de JsonIgnore para JsonProperty
-import java.io.Serializable;        // ← professora usa sempre
+import com.fasterxml.jackson.annotation.JsonProperty; 
+import java.io.Serializable;        
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
 @Table(name = "usuarios")
-public class Usuario implements Serializable {  // ← ADICIONADO
-    private static final long serialVersionUID = 1L; // ← obrigatório com Serializable
+public class Usuario implements Serializable {  
+    private static final long serialVersionUID = 1L; 
 
     @Id
     @Column(name = "id", columnDefinition = "VARCHAR(36)", updatable = false, nullable = false)
@@ -24,12 +24,6 @@ public class Usuario implements Serializable {  // ← ADICIONADO
     @Column(nullable = false, unique = true)
     private String email;
 
-    // ✅ CORRIGIDO: @JsonIgnore bloqueava a senha nos DOIS sentidos
-    // (entrada E saída), por isso ela chegava NULL ao cadastrar.
-    //
-    // @JsonProperty(WRITE_ONLY) faz o correto:
-    //   - O app PODE enviar a senha ao cadastrar/logar (entrada) ✅
-    //   - A senha NUNCA aparece nas respostas do backend (saída) ✅
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     @Column(nullable = false)
     private String senha;

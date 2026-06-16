@@ -1,6 +1,6 @@
 // app/(tabs)/home.tsx — Tela principal do app
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -18,7 +18,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FontAwesome5, Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 
 import { useTransacoesStore } from '../../src/store/src/store/useTransacoesStore';
 import PerfilModal from '../../src/componentes/PerfilModal';
@@ -53,9 +53,12 @@ export default function Home() {
   const [categoriasDoBanco, setCategoriasDoBanco] = useState<Categoria[]>([]);
   const [filtro, setFiltro] = useState<'todos' | 'receita' | 'despesa'>('todos');
 
-  useEffect(() => {
-    carregarDadosIniciais();
-  }, []);
+  // Roda toda vez que a tela Home entra em foco (inclusive ao voltar da aba Metas)
+  useFocusEffect(
+    useCallback(() => {
+      carregarDadosIniciais();
+    }, [])
+  );
 
   useEffect(() => {
     setCategoriaSelecionada(null);
@@ -109,16 +112,18 @@ export default function Home() {
 
   async function buscarMetasDisponiveis(idDoUsuario: string) {
     try {
-      const resposta = await fetch(`${API_URL}/metas/usuario/${idDoUsuario}/status/em_andamento`);
+      const resposta = await fetch(`${API_URL}/metas/usuario/${idDoUsuario}`);
       if (resposta.ok) {
         const dados = await resposta.json();
         setMetasDisponiveis(
-          dados.map((m: any) => ({
-            id: m.id,
-            nome: m.nome,
-            valorAtual: m.valorAtual,
-            valorAlvo: m.valorAlvo,
-          }))
+          dados
+            .filter((m: any) => m.status === 'em_andamento')
+            .map((m: any) => ({
+              id: m.id,
+              nome: m.nome,
+              valorAtual: m.valorAtual,
+              valorAlvo: m.valorAlvo,
+            }))
         );
       }
     } catch {}
@@ -147,6 +152,15 @@ export default function Home() {
     const valorNumerico = mascaraParaNumero(valor);
     if (valorNumerico <= 0) {
       Alert.alert('Atenção', 'Digite um valor válido.');
+      return;
+    }
+
+    // Bloqueia se for despesa de meta e o valor superar o saldo líquido
+    if (ehMeta && valorNumerico > saldoAtual) {
+      Alert.alert(
+        'Saldo insuficiente',
+        `Você tem ${formatarMoeda(saldoAtual)} de valor líquido disponível.\n\nNão é possível destinar ${formatarMoeda(valorNumerico)} para esta meta.`
+      );
       return;
     }
 
@@ -306,18 +320,20 @@ export default function Home() {
           </Text>
           <Text style={estilosHome.labelSaldo}>Valor líquido</Text>
 
-          {/* Resumo de metas abaixo do valor líquido */}
-          {metasDisponiveis.length > 0 && (
-            <View style={estilosHome.resumoMetas}>
-              <Ionicons name="flag" size={12} color="#FACC15" style={{ marginRight: 6 }} />
-              <Text style={estilosHome.resumoMetasTexto}>
-                {metasDisponiveis.length} {metasDisponiveis.length === 1 ? 'meta' : 'metas'} em andamento · acumulado{' '}
+          {/* Resumo de metas abaixo do valor líquido — sempre visível */}
+          <View style={estilosHome.resumoMetas}>
+            <Ionicons name="flag" size={12} color="#FACC15" style={{ marginRight: 6 }} />
+            <Text style={estilosHome.resumoMetasTexto}>
+              {metasDisponiveis.length === 0
+                ? 'Nenhuma meta em andamento'
+                : `${metasDisponiveis.length} ${metasDisponiveis.length === 1 ? 'meta' : 'metas'} em andamento · acumulado `}
+              {metasDisponiveis.length > 0 && (
                 <Text style={{ color: '#FACC15', fontWeight: 'bold' }}>
                   {formatarMoeda(metasDisponiveis.reduce((acc, m) => acc + m.valorAtual, 0))}
                 </Text>
-              </Text>
-            </View>
-          )}
+              )}
+            </Text>
+          </View>
 
           {/* Cartões receita / despesa */}
           <View style={estilosHome.filhaCartoes}>
@@ -700,15 +716,32 @@ export default function Home() {
                   )}
 
                   {/* Valor */}
-                  <Text style={estilosHome.labelCampo}>Valor</Text>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, marginTop: 4 }}>
+                    <Text style={estilosHome.labelCampo}>Valor</Text>
+                    {tipo === 'despesa' && ehDespesaMeta && (
+                      <Text style={{ fontSize: 12, color: saldoAtual > 0 ? CORES.verde : CORES.vermelho }}>
+                        Disponível: <Text style={{ fontWeight: 'bold' }}>{formatarMoeda(saldoAtual)}</Text>
+                      </Text>
+                    )}
+                  </View>
                   <TextInput
-                    style={estilosHome.input}
+                    style={[
+                      estilosHome.input,
+                      tipo === 'despesa' && ehDespesaMeta && mascaraParaNumero(valor) > saldoAtual && valor !== ''
+                        ? { borderColor: CORES.vermelho }
+                        : {},
+                    ]}
                     placeholder="R$ 0,00"
                     placeholderTextColor="#6b7280"
                     keyboardType="numeric"
                     value={valor}
                     onChangeText={(t) => setValor(formatarValorInput(t))}
                   />
+                  {tipo === 'despesa' && ehDespesaMeta && mascaraParaNumero(valor) > saldoAtual && valor !== '' && (
+                    <Text style={{ color: CORES.vermelho, fontSize: 12, marginTop: -10, marginBottom: 10 }}>
+                      ⚠ Valor acima do seu saldo disponível
+                    </Text>
+                  )}
 
                   {/* Descrição */}
                   <Text style={estilosHome.labelCampo}>Descrição (opcional)</Text>

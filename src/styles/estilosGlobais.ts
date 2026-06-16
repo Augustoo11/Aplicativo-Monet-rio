@@ -1,10 +1,3 @@
-// src/styles/estilosGlobais.ts
-// ─────────────────────────────────────────────────────────────
-// Estilos que são usados em várias telas do app.
-// Em vez de repetir o mesmo estilo em cada arquivo,
-// importamos daqui e reutilizamos.
-// ─────────────────────────────────────────────────────────────
-
 import { StyleSheet } from 'react-native';
 import { CORES } from '../config';
 

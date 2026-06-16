@@ -1,5 +1,3 @@
-// app/(tabs)/Metas.tsx — Tela de gerenciamento de metas financeiras
-
 import React, { useEffect, useState } from 'react';
 import {
   View,

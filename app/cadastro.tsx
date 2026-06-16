@@ -1,10 +1,3 @@
-// app/cadastro.tsx
-// ─────────────────────────────────────────────────────────────
-// Tela de Cadastro — onde o usuário cria uma conta nova.
-// Envia nome, email e senha para o backend, e ao criar
-// a conta já faz login automático.
-// ─────────────────────────────────────────────────────────────
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -84,8 +77,6 @@ export default function TelaCadastro() {
         }),
       });
 
-      // ✅ Lê o texto da resposta sempre, pois o backend agora
-      // retorna mensagens explicando o que aconteceu
       const textoResposta = await respostaCadastro.text();
 
       // Se o email já está em uso (status 409)
@@ -93,10 +84,7 @@ export default function TelaCadastro() {
         Alert.alert('Atenção', 'E-mail já cadastrado. Tente fazer login.');
         return;
       }
-
-      // Se houve outro erro (400, 500, etc)
-      // ✅ Agora mostramos a mensagem real que veio do backend,
-      // assim fica fácil descobrir o motivo do erro
+      
       if (!respostaCadastro.ok) {
         Alert.alert('Erro', textoResposta || 'Não foi possível criar a conta. Tente novamente.');
         return;

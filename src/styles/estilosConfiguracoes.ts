@@ -1,5 +1,3 @@
-// app/(tabs)/estilosConfiguracoes.ts
-
 import { StyleSheet } from 'react-native';
 import { CORES } from '../config';
 
